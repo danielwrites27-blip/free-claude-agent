@@ -102,9 +102,8 @@ class FreeAgent:
             
             # Store interaction in memory (non-blocking)
             self.memory.store(
-                content=f"Q: {prompt}\nA: {compressed_output}",
-                tags=["conversation"],
-                token_count=tokens_used
+    content=f"Q: {prompt}\nA: {compressed_output}",
+    tags=["conversation"]
             )
             
             return compressed_output
