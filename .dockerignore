@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-wheel-metadata/
+
+# Environment files (never include secrets in image)
+.env
+!.env.example
+
+# Memory/database files (ephemeral, don't bake into image)
+*.mv2
+*.db
+*.sqlite
+
+# Gradio cache
+.gradio/
+
+# Git (not needed in image)
+.git/
+.gitignore
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node (if you ever add frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Docker (avoid recursive builds)
+Dockerfile
+.dockerignore
