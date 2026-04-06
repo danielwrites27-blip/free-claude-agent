@@ -1,1 +1,54 @@
 
+---
+
+### 1️⃣1️⃣ `.gitignore`
+```gitignore
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-wheel-metadata/
+
+# Environment variables
+.env
+!.env.example
+
+# Memory/database files
+*.mv2
+*.db
+*.sqlite
+
+# Gradio
+.gradio/
+
+# Docker
+.docker/
+!Dockerfile
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Deployment
+space/
+.hf/
