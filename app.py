@@ -41,7 +41,7 @@ def show_usage() -> str:
     """
 
 # Gradio interface
-with gr.Blocks(title="🆓 Free Claude Agent", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="🆓 Free Claude Agent") as demo:
     gr.Markdown("""
     ## 🆓 Free Claude-Style Agent
     *100% free • Groq API • Token-optimized • No credit card*
@@ -56,8 +56,7 @@ with gr.Blocks(title="🆓 Free Claude Agent", theme=gr.themes.Soft()) as demo:
             "How do I fix a React re-render bug?",
             "Explain quantum entanglement simply",
             "Debug this Python error: IndexError: list index out of range"
-        ],
-        theme=gr.themes.Soft()
+        ]
     )
     
     with gr.Accordion("📊 Usage Stats", open=False):
