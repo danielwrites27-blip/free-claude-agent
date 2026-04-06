@@ -1,0 +1,39 @@
+# .github/workflows/build-and-push.yml
+name: Build & Push Docker Image to GHCR
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write  # Required to push to GitHub Container Registry
+    
+    steps:
+    - name: 📦 Checkout code
+      uses: actions/checkout@v4
+    
+    - name: 🔐 Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: 🏗️ Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ghcr.io/${{ github.repository }}:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+    
+    - name: ✅ Deployment complete
+      run: |
+        echo "🚀 Image pushed to: ghcr.io/${{ github.repository }}:latest"
+        echo "🔗 Make sure it's PUBLIC: https://github.com/${{ github.repository }}/pkgs/container/free-claude-agent"
