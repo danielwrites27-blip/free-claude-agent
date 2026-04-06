@@ -18,7 +18,7 @@ def get_agent():
         agent = FreeAgent(
             api_key=os.getenv("GROQ_API_KEY"),
             daily_token_limit=int(os.getenv("DAILY_TOKEN_LIMIT", "50000")),
-            memory_path=os.getenv("MEMORY_PATH", "agent_memory.mv2")
+            memory_path=os.getenv("MEMORY_PATH", "agent_memory.db")
         )
     return agent
 
