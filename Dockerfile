@@ -28,6 +28,19 @@ EXPOSE 7860
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:7860')" || exit 1
+    
+# Add these lines BEFORE the CMD instruction:
+
+# ClawCloud assigns PORT env var; Gradio must listen on it
+ENV GRADIO_SERVER_NAME=0.0.0.0
+ENV GRADIO_SERVER_PORT=7860
+
+# Health check for ClawCloud
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import requests; requests.get('http://localhost:7860')" || exit 1
+
+# Expose the port ClawCloud expects
+EXPOSE 7860
 
 # Run the app
 CMD ["python", "app.py"]
