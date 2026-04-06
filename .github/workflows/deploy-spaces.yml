@@ -1,1 +1,93 @@
+name: Deploy to Hugging Face Spaces
 
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Skip if no HF token configured
+    if: ${{ secrets.HF_TOKEN != '' }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Full history for space creation
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install huggingface_hub
+    
+    - name: Configure Git for HF
+      run: |
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git config --global user.name "github-actions[bot]"
+    
+    - name: Deploy to Hugging Face Spaces
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        SPACE_NAME: ${{ vars.SPACE_NAME || 'free-claude-agent' }}
+        HF_USERNAME: ${{ vars.HF_USERNAME }}
+      run: |
+        # Create or update space
+        python -c "
+        from huggingface_hub import HfApi, create_repo
+        import os, sys
+        
+        api = HfApi(token=os.environ['HF_TOKEN'])
+        username = os.environ['HF_USERNAME']
+        space_name = os.environ['SPACE_NAME']
+        repo_id = f'{username}/{space_name}'
+        
+        try:
+            # Check if space exists
+            api.space_info(repo_id)
+            print(f'✅ Space {repo_id} exists, updating...')
+        except:
+            # Create new Gradio space
+            print(f'🆕 Creating space {repo_id}...')
+            create_repo(
+                repo_id=repo_id,
+                repo_type='space',
+                space_sdk='gradio',
+                token=os.environ['HF_TOKEN'],
+                private=False  # Set to True for private spaces
+            )
+        
+        # Clone space, copy files, push
+        import subprocess, shutil, tempfile, os
+        with tempfile.TemporaryDirectory() as tmpdir:
+            space_dir = os.path.join(tmpdir, space_name)
+            subprocess.run([
+                'git', 'clone', f'https://{os.environ[\"HF_TOKEN\"]}@huggingface.co/spaces/{repo_id}',
+                space_dir
+            ], check=True, capture_output=True)
+            
+            # Copy our files (exclude .git)
+            for item in os.listdir('.'):
+                if item in ['.git', '.github', 'tests', tmpdir, space_name]:
+                    continue
+                src = os.path.join('.', item)
+                dst = os.path.join(space_dir, item)
+                if os.path.isdir(src):
+                    shutil.copytree(src, dst, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(src, dst)
+            
+            # Commit and push
+            os.chdir(space_dir)
+            subprocess.run(['git', 'add', '.'], check=True)
+            subprocess.run(['git', 'commit', '-m', f'🤖 Auto-deploy from GitHub: {os.environ[\"GITHUB_SHA\"][:7]}'], 
+                         check=True, capture_output=True)
+            subprocess.run(['git', 'push'], check=True, capture_output=True)
+            print(f'🚀 Deployed to https://huggingface.co/spaces/{repo_id}')
+        "
