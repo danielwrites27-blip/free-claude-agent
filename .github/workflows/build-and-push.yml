@@ -1,107 +1,26 @@
-name: Deploy to Hugging Face Spaces
+name: CI
 
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
-  deploy:
+  validate:
     runs-on: ubuntu-latest
-    # ❌ REMOVED: if: ${{ secrets.HF_TOKEN != '' }}  ← This caused the error
-    
     steps:
-    - name: 🔍 Check for required secrets
-      id: check-secrets
-      run: |
-        if [ -z "${{ secrets.HF_TOKEN }}" ]; then
-          echo "missing=true" >> $GITHUB_OUTPUT
-          echo "⚠️ HF_TOKEN secret not found. Skipping deployment."
-        else
-          echo "missing=false" >> $GITHUB_OUTPUT
-        fi
-    
-    - name: ⏭️ Skip if secrets missing
-      if: steps.check-secrets.outputs.missing == 'true'
-      run: echo "✅ Skipped: Missing HF_TOKEN secret. Add it in Settings → Secrets to enable auto-deploy."
-    
-    - name: 📦 Checkout code
-      if: steps.check-secrets.outputs.missing == 'false'
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Full history for space creation
-    
-    - name: 🐍 Set up Python
-      if: steps.check-secrets.outputs.missing == 'false'
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-    
-    - name: 📦 Install dependencies
-      if: steps.check-secrets.outputs.missing == 'false'
-      run: |
-        pip install -r requirements.txt
-        pip install huggingface_hub
-    
-    - name: 🔧 Configure Git for HF
-      if: steps.check-secrets.outputs.missing == 'false'
-      run: |
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git config --global user.name "github-actions[bot]"
-    
-    - name: 🚀 Deploy to Hugging Face Spaces
-      if: steps.check-secrets.outputs.missing == 'false'
-      env:
-        HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        SPACE_NAME: ${{ vars.SPACE_NAME || 'free-claude-agent' }}
-        HF_USERNAME: ${{ vars.HF_USERNAME }}
-      run: |
-        python -c "
-        from huggingface_hub import HfApi, create_repo
-        import os, sys, subprocess, shutil, tempfile
-        
-        api = HfApi(token=os.environ['HF_TOKEN'])
-        username = os.environ.get('HF_USERNAME')
-        if not username:
-            # Auto-detect from GH actor
-            username = os.environ['GITHUB_ACTOR']
-        space_name = os.environ['SPACE_NAME']
-        repo_id = f'{username}/{space_name}'
-        
-        try:
-            api.space_info(repo_id)
-            print(f'✅ Space {repo_id} exists, updating...')
-        except:
-            print(f'🆕 Creating space {repo_id}...')
-            create_repo(
-                repo_id=repo_id,
-                repo_type='space',
-                space_sdk='gradio',
-                token=os.environ['HF_TOKEN'],
-                private=False
-            )
-        
-        with tempfile.TemporaryDirectory() as tmpdir:
-            space_dir = os.path.join(tmpdir, space_name)
-            subprocess.run([
-                'git', 'clone', f'https://{os.environ[\"HF_TOKEN\"]}@huggingface.co/spaces/{repo_id}',
-                space_dir
-            ], check=True, capture_output=True)
-            
-            for item in os.listdir('.'):
-                if item in ['.git', '.github', 'tests', tmpdir, space_name, 'node_modules']:
-                    continue
-                src = os.path.join('.', item)
-                dst = os.path.join(space_dir, item)
-                if os.path.isdir(src):
-                    shutil.copytree(src, dst, dirs_exist_ok=True)
-                else:
-                    shutil.copy2(src, dst)
-            
-            os.chdir(space_dir)
-            subprocess.run(['git', 'add', '.'], check=True)
-            subprocess.run(['git', 'commit', '-m', f'🤖 Auto-deploy: {os.environ[\"GITHUB_SHA\"][:7]}'], 
-                         check=True, capture_output=True)
-            subprocess.run(['git', 'push'], check=True, capture_output=True)
-            print(f'🚀 Deployed to https://huggingface.co/spaces/{repo_id}')
-        "
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Confirm app starts
+        run: python -c "from src.agent import FreeAgent; print('Import OK')"
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
