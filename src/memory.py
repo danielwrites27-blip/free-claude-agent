@@ -24,12 +24,12 @@ class TokenEfficientMemory:
         
         # FTS5 table for full-text search (BM25 ranking)
         cursor.execute("""
-            CREATE VIRTUAL TABLE IF NOT EXISTS memories 
-            USING fts5(
-                id, content, tags, timestamp,
-                content_rank='bm25(10,1)'
-            )
-        """)
+            cursor.execute("""
+    CREATE VIRTUAL TABLE IF NOT EXISTS memories 
+    USING fts5(
+        id, content, tags, timestamp
+         )
+     """)
         
         # Metadata table for embeddings + token counts
         cursor.execute("""
