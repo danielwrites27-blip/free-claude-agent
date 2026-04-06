@@ -85,9 +85,9 @@ with gr.Blocks(title="🆓 Free Claude Agent", theme=gr.themes.Soft()) as demo:
 if __name__ == "__main__":
     # For Hugging Face Spaces: use server_port=7860, server_name="0.0.0.0"
     demo.launch(
-        server_name="0.0.0.0",
-        server_port=7860,
-        share=False,  # Set True for public link during testing
-        auth=(os.getenv("HF_AUTH_USERNAME"), os.getenv("HF_AUTH_PASSWORD")) 
-             if os.getenv("HF_AUTH_USERNAME") else None
-    )
+    server_name="0.0.0.0",
+    server_port=7860,
+    share=False,
+    auth=(os.getenv("HF_AUTH_USERNAME"), os.getenv("HF_AUTH_PASSWORD"))
+         if os.getenv("HF_AUTH_USERNAME") and os.getenv("HF_AUTH_PASSWORD") else None
+)
