@@ -131,10 +131,9 @@ if __name__ == "__main__":
         auth = (hf_user, hf_pass)
 
     demo.launch(
-        server_name="0.0.0.0",
-        server_port=int(os.getenv("PORT", "7860")),
-        share=False,
-        auth=auth,
-        theme=gr.themes.Soft(),
-        show_api=False,  # <--- ADD THIS LINE
-    )
+    server_name="0.0.0.0",
+    server_port=int(os.getenv("PORT", "7860")),
+    share=False,
+    auth=auth,
+    show_api=False,
+)
