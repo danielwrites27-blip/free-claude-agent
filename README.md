@@ -53,3 +53,16 @@ Then open http://localhost:7860
 - **Reset**: Use the Reset Memory button to start fresh
 
 ## 🏗️ Architecture
+app.py          → Gradio UI
+src/agent.py    → Core agent + provider fallback
+src/memory.py   → SQLite FTS5 memory layer
+src/caveman.py  → Token compression + reasoning templates
+src/router.py   → Model routing logic
+src/code_runner.py → Safe code execution sandbox
+## 📦 Stack
+- Python 3.11
+- Gradio 6
+- Groq SDK
+- OpenAI SDK (for Cerebras + SambaNova)
+- SQLite FTS5
+- Docker
