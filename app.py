@@ -140,15 +140,15 @@ if __name__ == "__main__":
         auth = (hf_user, hf_pass)
 
     demo.launch(
-        server_name="0.0.0.0",
-        server_port=int(os.getenv("PORT", "7860")),
-        share=False,
-        auth=auth,
-        show_api=False,
-        root_path="",  # Explicitly set root_path to avoid conflicts
-        app_kwargs={
-            "docs_url": None,      # Disable Swagger UI
-            "redoc_url": None,     # Disable ReDoc
-            "openapi_url": None    # Disable OpenAPI JSON endpoint
-        }
-    )
+    server_name="0.0.0.0",
+    server_port=int(os.getenv("PORT", "7860")),
+    share=True,  # CHANGE THIS TO TRUE
+    auth=auth,
+    show_api=False,
+    root_path="",
+    app_kwargs={
+        "docs_url": None,
+        "redoc_url": None,
+        "openapi_url": None
+    }
+)
