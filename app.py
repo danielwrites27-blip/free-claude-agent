@@ -60,7 +60,7 @@ def clear_history():
 
 
 # ── Gradio UI ─────────────────────────────────────────────────────────────────
-with gr.Blocks(title="🆓 Free Claude Agent", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="🆓 Free Claude Agent") as demo:
 
     gr.Markdown("""
 # 🆓 Free Claude Agent
@@ -86,8 +86,8 @@ with gr.Blocks(title="🆓 Free Claude Agent", theme=gr.themes.Soft()) as demo:
 
     # Controls row
     with gr.Row():
-        clear_btn = gr.Button("🗑️ Clear History", variant="secondary", scale=1)
-        clear_status = gr.Markdown(scale=3)
+    clear_btn = gr.Button("🗑️ Clear History", variant="secondary", scale=1)
+    clear_status = gr.Markdown()
 
     clear_btn.click(
         fn=clear_history,
@@ -130,9 +130,10 @@ if __name__ == "__main__":
     if hf_user and hf_pass:          # FIXED: only set auth if BOTH are present
         auth = (hf_user, hf_pass)
 
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=int(os.getenv("PORT", "7860")),
-        share=False,
-        auth=auth,
-    )
+    emo.launch(
+    server_name="0.0.0.0",
+    server_port=int(os.getenv("PORT", "7860")),
+    share=False,
+    auth=auth,
+    theme=gr.themes.Soft(),
+)
