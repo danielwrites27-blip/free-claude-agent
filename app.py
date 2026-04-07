@@ -1,6 +1,5 @@
 """
-# Rebuild triggered: 2026-04-07
-Gradio interface for Free Claude Agent.
+Gradio interface for Free Claude Agent with Caveman Mode Toggle.
 Run locally:   python app.py
 Deploy:        GitHub Actions auto-pushes to HF Spaces / claw.cloud pod
 """
@@ -10,27 +9,34 @@ from src.agent import FreeAgent
 
 # ── Agent singleton (lazy-loaded on first request) ────────────────────────────
 _agent: FreeAgent | None = None
+_current_caveman_mode: bool = True  # Track current mode to know when to reload
 
-def get_agent() -> FreeAgent:
-    global _agent
-    if _agent is None:
+def get_agent(caveman_mode: bool = True) -> FreeAgent:
+    """
+    Returns the agent instance. 
+    If caveman_mode setting changes, recreates the agent with new settings.
+    """
+    global _agent, _current_caveman_mode
+    
+    # Initialize or recreate agent if mode changed
+    if _agent is None or caveman_mode != _current_caveman_mode:
+        _current_caveman_mode = caveman_mode
         _agent = FreeAgent(
             api_key=os.getenv("GROQ_API_KEY"),
             daily_token_limit=int(os.getenv("DAILY_TOKEN_LIMIT", "50000")),
-            memory_path=os.getenv("MEMORY_PATH", "agent_memory.db"),  # FIXED: was .mv2
-            caveman_mode=os.getenv("CAVEMAN_MODE", "true").lower() == "true",
+            memory_path=os.getenv("MEMORY_PATH", "agent_memory.db"),
+            caveman_mode=caveman_mode,
         )
     return _agent
 
 
 # ── Chat handler (streaming) ──────────────────────────────────────────────────
-def chat_stream(message: str, history: list):
+def chat_stream(message: str, history: list, caveman_toggle: bool):
     """
     Gradio streaming chat handler.
-    `history` is passed by Gradio automatically — we don't need it ourselves
-    because the agent maintains its own conversation_history internally.
+    `caveman_toggle` controls whether the agent uses caveman mode.
     """
-    agent = get_agent()
+    agent = get_agent(caveman_mode=caveman_toggle)
     partial = ""
     try:
         for chunk in agent.ask_stream(message):
@@ -42,6 +48,7 @@ def chat_stream(message: str, history: list):
 
 # ── Usage stats ───────────────────────────────────────────────────────────────
 def show_usage() -> str:
+    # Use default mode for stats (doesn't matter much for usage info)
     usage = get_agent().get_usage()
     providers = ", ".join(usage["providers_active"])
     return (
@@ -71,9 +78,18 @@ with gr.Blocks(title="🆓 Free Claude Agent", theme=gr.themes.Soft()) as demo:
 > **Smart routing:** Simple queries → fast 8B model · Complex queries → 70B model
     """)
 
+    # Caveman Mode Toggle
+    with gr.Row():
+        caveman_toggle = gr.Checkbox(
+            label="🦕 Caveman Mode (Save Tokens)", 
+            value=True, 
+            info="Enable to strip filler words and save ~75% tokens"
+        )
+
     # Main chat
     chatbot = gr.ChatInterface(
         fn=chat_stream,
+        additional_inputs=[caveman_toggle],  # Pass toggle state to chat function
         title="",
         examples=[
             "How do I fix a React re-render bug?",
@@ -81,19 +97,20 @@ with gr.Blocks(title="🆓 Free Claude Agent", theme=gr.themes.Soft()) as demo:
             "Debug this Python error: IndexError: list index out of range",
             "Write a Python function to parse JSON safely with fallback",
             "Compare PostgreSQL vs MongoDB for a social app",
+            "Check https://www.python.org",
         ],
         cache_examples=False,
     )
 
     # Controls row
     with gr.Row():
-        clear_btn = gr.Button("🗑️ Clear History", variant="secondary", scale=1)  # ✅ Indented
-        clear_status = gr.Markdown()  # ✅ Indented
+        clear_btn = gr.Button("🗑️ Clear History", variant="secondary", scale=1)
+        clear_status = gr.Markdown()
 
-        clear_btn.click(
-            fn=clear_history,
-            outputs=[chatbot.chatbot, clear_status]
-        )
+    clear_btn.click(
+        fn=clear_history,
+        outputs=[chatbot.chatbot, clear_status]
+    )
 
     # Usage accordion
     with gr.Accordion("📊 Usage Stats", open=False):
@@ -114,30 +131,19 @@ with gr.Blocks(title="🆓 Free Claude Agent", theme=gr.themes.Soft()) as demo:
 
 ### 🔧 Self-host
 ```bash
-git clone https://github.com/danielwrites27-blip/free-claude-agent
+git clone https://github.com/danielwrites27-blip/free-claude-agent 
 cd free-claude-agent
 cp .env.example .env   # add your API keys
 docker build -t agent .
 docker run -p 7860:7860 --env-file .env agent
 ```
-    """)
-
+""")
 
 # ── Launch ────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     auth = None
     hf_user = os.getenv("HF_AUTH_USERNAME")
     hf_pass = os.getenv("HF_AUTH_PASSWORD")
-    if hf_user and hf_pass:          # FIXED: only set auth if BOTH are present
-        auth = (hf_user, hf_pass)
-        
-# BUILD_MARKER_20260407_FIX
-    # ── Launch ────────────────────────────────────────────────────────────────────
-if __name__ == "__main__":
-    auth = None
-    hf_user = os.getenv("HF_AUTH_USERNAME")
-    hf_pass = os.getenv("HF_AUTH_PASSWORD")
-    
     # FIXED: Only set auth if BOTH are present
     if hf_user and hf_pass:
         auth = (hf_user, hf_pass)
