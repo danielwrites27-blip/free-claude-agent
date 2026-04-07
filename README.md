@@ -13,10 +13,9 @@ No credit card, no GPU, no monthly fees.
 
 ## 🚀 Quick Start
 
-### Option 1: Try Live Demo
-👉 https://htiicjduzjbi.ap-southeast-1.clawcloudrun.com
 
-### Option 2: Self-host with Docker
+
+### Self-host with Docker
 ```bash
 # 1. Clone repo
 git clone https://github.com/danielwrites27-blip/free-claude-agent
