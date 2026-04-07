@@ -92,12 +92,12 @@ with gr.Blocks(title="🆓 Free Claude Agent", theme=gr.themes.Soft()) as demo:
         additional_inputs=[caveman_toggle],  # Pass toggle state to chat function
         title="",
         examples=[
-            "How do I fix a React re-render bug?",
-            "Explain quantum entanglement simply",
-            "Debug this Python error: IndexError: list index out of range",
-            "Write a Python function to parse JSON safely with fallback",
-            "Compare PostgreSQL vs MongoDB for a social app",
-            "Check https://www.python.org",
+            ["How do I fix a React re-render bug?", True],
+            ["Explain quantum entanglement simply", True],
+            ["Debug this Python error: IndexError: list index out of range", True],
+            ["Write a Python function to parse JSON safely with fallback", True],
+            ["Compare PostgreSQL vs MongoDB for a social app", True],
+            ["Check https://www.python.org", True],
         ],
         cache_examples=False,
     )
