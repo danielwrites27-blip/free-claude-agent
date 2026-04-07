@@ -86,13 +86,13 @@ with gr.Blocks(title="🆓 Free Claude Agent") as demo:
 
     # Controls row
     with gr.Row():
-    clear_btn = gr.Button("🗑️ Clear History", variant="secondary", scale=1)
-    clear_status = gr.Markdown()
+        clear_btn = gr.Button("🗑️ Clear History", variant="secondary", scale=1)  # ✅ Indented
+        clear_status = gr.Markdown()  # ✅ Indented
 
-    clear_btn.click(
-        fn=clear_history,
-        outputs=[chatbot.chatbot, clear_status]
-    )
+        clear_btn.click(
+            fn=clear_history,
+            outputs=[chatbot.chatbot, clear_status]
+        )
 
     # Usage accordion
     with gr.Accordion("📊 Usage Stats", open=False):
