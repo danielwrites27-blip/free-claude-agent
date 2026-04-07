@@ -28,7 +28,7 @@ jobs:
         with:
           context: .
           push: true
-          no-cache: true  # <-- FORCE FRESH BUILD
+          no-cache: true
           tags: |
             ghcr.io/${{ github.repository }}:latest
-            ghcr.io/${{ github.repository }}:${{ github.sha }} # <-- UNIQUE TAG PER COMMIT
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
