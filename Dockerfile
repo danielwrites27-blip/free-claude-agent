@@ -5,8 +5,11 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies for SQLite FTS5
-RUN apt-get update && apt-get install -y \
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    g++ \
+    python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
