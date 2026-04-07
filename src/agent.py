@@ -60,9 +60,50 @@ class FreeAgent:
     def _inject_memory(self, prompt: str, max_mem_tokens: int = 1000) -> str:
         """Add relevant memory without exceeding token budget"""
         recalled = self.memory.recall(prompt, max_tokens=max_mem_tokens)
-        if not recalled:
+        
+        # Check for URL in prompt and fetch content
+        url_context = ""
+        if "http://" in prompt or "https://" in prompt:
+            urls = re.findall(r'https?://[^\s<>"]+', prompt)
+            if urls:
+                url = urls[0]
+                fetched_content = self._fetch_url_content(url)
+                if not fetched_content.startswith("Error"):
+                    url_context = f"\n\nContent from {url}:\n{fetched_content}"
+        
+        memory_text = recalled if recalled else ""
+        full_context = memory_text + url_context
+        
+        if not full_context:
             return prompt
-        return f"Relevant history:\n{recalled}\n\nCurrent task:\n{prompt}"
+        return f"Relevant context:\n{full_context}\n\nCurrent task:\n{prompt}"
+
+    def _fetch_url_content(self, url: str) -> str:
+        """Fetch and clean text content from a URL."""
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+            
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Remove script, style, nav, footer elements
+            for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
+                tag.decompose()
+            
+            text = soup.get_text(separator=' ', strip=True)
+            
+            # Truncate to avoid token overflow (max 2000 chars)
+            return text[:2000] if len(text) > 2000 else text
+            
+        except Exception as e:
+            return f"Error fetching URL: {str(e)}"
     
     def ask(self, prompt: str, max_output_tokens: int = 1024) -> str:
         """Main entry point: Ask the agent a question"""
