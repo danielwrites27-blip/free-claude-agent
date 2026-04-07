@@ -130,10 +130,10 @@ if __name__ == "__main__":
     if hf_user and hf_pass:          # FIXED: only set auth if BOTH are present
         auth = (hf_user, hf_pass)
 
-    emo.launch(
-    server_name="0.0.0.0",
-    server_port=int(os.getenv("PORT", "7860")),
-    share=False,
-    auth=auth,
-    theme=gr.themes.Soft(),
-)
+    demo.launch(
+        server_name="0.0.0.0",
+        server_port=int(os.getenv("PORT", "7860")),
+        share=False,
+        auth=auth,
+        theme=gr.themes.Soft(),
+    )
