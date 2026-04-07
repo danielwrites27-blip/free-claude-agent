@@ -1,54 +1,32 @@
-
----
-
-### 1️⃣1️⃣ `.gitignore`
-```gitignore
+```
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-env/
-venv/
-.venv/
-pip-wheel-metadata/
+*.pyc
+*.pyo
+*.pyd
 
-# Environment variables
+# Environment
 .env
-!.env.example
-
-# Memory/database files
-*.mv2
-*.db
-*.sqlite
-
-# Gradio
-.gradio/
-
-# Docker
-.docker/
-!Dockerfile
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# OS
-.DS_Store
-Thumbs.db
+.env.local
+*.env.*
 
 # Logs
 *.log
-logs/
 
-# Testing
-.pytest_cache/
+# Coverage
 .coverage
+coverage/
 htmlcov/
 
-# Deployment
-space/
-.hf/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# Build and distribution
+dist/
+build/
+*.egg-info/
+```
