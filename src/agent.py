@@ -4,6 +4,7 @@ Multi-provider: Groq + Sambanova + Cerebras (all free tier).
 Multi-turn conversation history, streaming, SQLite memory.
 """
 import os
+import re
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Generator
 
@@ -41,7 +42,7 @@ class FreeAgent:
         groq_key = api_key or os.getenv("GROQ_API_KEY")
         if not groq_key:
             raise ValueError(
-                "GROQ_API_KEY required. Get free key: https://console.groq.com/keys"
+                "GROQ_API_KEY required. Get free key: https://console.groq.com/keys "
             )
         self.groq_client = Groq(api_key=groq_key)
 
@@ -54,7 +55,7 @@ class FreeAgent:
                 from openai import OpenAI
                 self.sambanova_client = OpenAI(
                     api_key=sambanova_key,
-                    base_url="https://api.sambanova.ai/v1"
+                    base_url="https://api.sambanova.ai/v1 "
                 )
             except ImportError:
                 pass  # openai not installed, skip
@@ -72,7 +73,7 @@ class FreeAgent:
                     from openai import OpenAI
                     self.cerebras_client = OpenAI(
                         api_key=cerebras_key,
-                        base_url="https://api.cerebras.ai/v1"
+                        base_url="https://api.cerebras.ai/v1 "
                     )
                 except ImportError:
                     pass
@@ -119,10 +120,48 @@ class FreeAgent:
     def _count_tokens(self, text: str) -> int:
         return len(self.encoder.encode(text))
 
+    def _fetch_url_content(self, url: str) -> str:
+        """Fetch and clean text content from a URL."""
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+            
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Remove script, style, nav, footer elements
+            for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
+                tag.decompose()
+            
+            text = soup.get_text(separator=' ', strip=True)
+            
+            # Truncate to avoid token overflow (max 2000 chars)
+            return text[:2000] if len(text) > 2000 else text
+            
+        except Exception as e:
+            return f"Error fetching URL: {str(e)}"
+
     def _get_memory_context(self, prompt: str) -> str:
         """Retrieve relevant long-term memories for this prompt"""
         recalled = self.memory.recall(prompt, max_tokens=800)
-        return recalled
+        
+        # Check for URL in prompt and fetch content
+        url_context = ""
+        if "http://" in prompt or "https://" in prompt:
+            urls = re.findall(r'https?://[^\s<>"]+', prompt)
+            if urls:
+                url = urls[0]
+                fetched_content = self._fetch_url_content(url)
+                if not fetched_content.startswith("Error"):
+                    url_context = f"\n\nContent from {url}:\n{fetched_content}"
+        
+        return recalled + url_context
 
     def _build_messages(self, prompt: str, memory_context: str) -> List[Dict]:
         """
