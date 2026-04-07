@@ -2,7 +2,7 @@
 groq==0.9.0
 openai==1.30.0
 gradio==4.44.0
-gradio_client==0.9.0
+gradio_client==1.3.0
 
 # Token management
 tiktoken==0.7.0
