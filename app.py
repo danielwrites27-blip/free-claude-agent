@@ -132,23 +132,26 @@ if __name__ == "__main__":
         auth = (hf_user, hf_pass)
         
 # BUILD_MARKER_20260407_FIX
-    if __name__ == "__main__":
+    # ── Launch ────────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
     auth = None
     hf_user = os.getenv("HF_AUTH_USERNAME")
     hf_pass = os.getenv("HF_AUTH_PASSWORD")
+    
+    # FIXED: Only set auth if BOTH are present
     if hf_user and hf_pass:
         auth = (hf_user, hf_pass)
 
     demo.launch(
-    server_name="0.0.0.0",
-    server_port=int(os.getenv("PORT", "7860")),
-    share=False,
-    auth=auth,
-    show_api=False,
-    root_path="",
-    app_kwargs={
-        "docs_url": None,
-        "redoc_url": None,
-        "openapi_url": None
-    }
-)
+        server_name="0.0.0.0",
+        server_port=int(os.getenv("PORT", "7860")),
+        share=True,
+        auth=auth,
+        show_api=False,
+        root_path="",
+        app_kwargs={
+            "docs_url": None,
+            "redoc_url": None,
+            "openapi_url": None
+        }
+    )
