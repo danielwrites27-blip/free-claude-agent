@@ -132,10 +132,23 @@ if __name__ == "__main__":
         auth = (hf_user, hf_pass)
         
 # BUILD_MARKER_20260407_FIX
+    if __name__ == "__main__":
+    auth = None
+    hf_user = os.getenv("HF_AUTH_USERNAME")
+    hf_pass = os.getenv("HF_AUTH_PASSWORD")
+    if hf_user and hf_pass:
+        auth = (hf_user, hf_pass)
+
     demo.launch(
-    server_name="0.0.0.0",
-    server_port=int(os.getenv("PORT", "7860")),
-    share=False,
-    auth=auth,
-    show_api=False,
-)
+        server_name="0.0.0.0",
+        server_port=int(os.getenv("PORT", "7860")),
+        share=False,
+        auth=auth,
+        show_api=False,
+        root_path="",  # Explicitly set root_path to avoid conflicts
+        app_kwargs={
+            "docs_url": None,      # Disable Swagger UI
+            "redoc_url": None,     # Disable ReDoc
+            "openapi_url": None    # Disable OpenAPI JSON endpoint
+        }
+    )
