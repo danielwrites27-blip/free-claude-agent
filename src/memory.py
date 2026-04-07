@@ -1,13 +1,15 @@
 """
 Lightweight memory layer using SQLite FTS5.
 Single-file, no external dependencies, sub-5ms retrieval.
+Plus: Working memory for multi-turn reasoning.
 """
 import sqlite3
 import hashlib
 import json
 import tiktoken
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Dict
+from datetime import datetime
 
 
 class TokenEfficientMemory:
@@ -23,7 +25,6 @@ class TokenEfficientMemory:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        # FTS5 table for full-text search (BM25 ranking)
         cursor.execute("""
             CREATE VIRTUAL TABLE IF NOT EXISTS memories
             USING fts5(
@@ -31,7 +32,6 @@ class TokenEfficientMemory:
             )
         """)
 
-        # Metadata table for token counts
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS metadata (
                 id TEXT PRIMARY KEY,
@@ -45,7 +45,6 @@ class TokenEfficientMemory:
         conn.close()
 
     def _count_tokens(self, text: str) -> int:
-        """Count tokens using tiktoken (cl100k_base)"""
         return len(self.encoder.encode(text))
 
     def store(self, content: str, tags: Optional[List[str]] = None,
@@ -75,10 +74,7 @@ class TokenEfficientMemory:
 
     def recall(self, query: str, top_k: int = 3,
                max_tokens: int = 2000) -> str:
-        """
-        BM25 full-text search with token budget enforcement.
-        Returns concatenated relevant memories.
-        """
+        """BM25 full-text search with token budget enforcement"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
@@ -108,9 +104,81 @@ class TokenEfficientMemory:
         return "\n\n---\n\n".join(selected) if selected else ""
 
     def clear(self):
-        """Clear all memories (for testing)"""
+        """Clear all memories"""
         conn = sqlite3.connect(self.db_path)
         conn.execute("DELETE FROM memories")
         conn.execute("DELETE FROM metadata")
         conn.commit()
         conn.close()
+
+
+class WorkingMemory:
+    """Short-term reasoning state for current conversation"""
+
+    def __init__(self, max_items: int = 10):
+        self.items: List[Dict] = []
+        self.max_items = max_items
+
+    def add(self, step: str, result: str, confidence: float = 0.8,
+            metadata: Optional[Dict] = None):
+        item = {
+            "step": step,
+            "result": result[:500],
+            "confidence": confidence,
+            "metadata": metadata or {},
+            "timestamp": datetime.now().isoformat()
+        }
+        self.items.append(item)
+        if len(self.items) > self.max_items:
+            self.items.pop(0)
+
+    def get_context(self) -> str:
+        if not self.items:
+            return ""
+        lines = ["<working_memory>"]
+        for item in self.items:
+            conf_icon = "✓" if item["confidence"] > 0.7 else "⚠"
+            lines.append(f"{conf_icon} {item['step']}: {item['result']}")
+        lines.append("</working_memory>")
+        return "\n".join(lines)
+
+    def clear(self):
+        self.items = []
+
+    def to_dict(self) -> List[Dict]:
+        return self.items.copy()
+
+    @classmethod
+    def from_dict(cls, data: List[Dict]) -> 'WorkingMemory':
+        wm = cls()
+        wm.items = data
+        return wm
+
+
+class ConversationSummarizer:
+    """Compress long conversations into token-efficient summaries"""
+
+    def __init__(self, max_summary_tokens: int = 500):
+        self.max_tokens = max_summary_tokens
+
+    def summarize(self, messages: List[Dict], generate_fn) -> str:
+        if not messages:
+            return ""
+
+        formatted = []
+        for msg in messages[-20:]:
+            role = "User" if msg["role"] == "user" else "Assistant"
+            formatted.append(f"{role}: {msg['content'][:300]}")
+
+        summary_prompt = f"""Summarize this conversation in 3-5 bullet points.
+Focus on: decisions made, code written, errors fixed, open questions.
+
+Conversation:
+{chr(10).join(formatted)}
+
+Summary (concise, factual):
+"""
+        try:
+            return generate_fn(summary_prompt, max_tokens=self.max_tokens).strip()
+        except Exception:
+            return "Conversation summary unavailable."
