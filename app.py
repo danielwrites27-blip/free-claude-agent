@@ -60,7 +60,7 @@ def clear_history():
 
 
 # ── Gradio UI ─────────────────────────────────────────────────────────────────
-with gr.Blocks(title="🆓 Free Claude Agent") as demo:
+with gr.Blocks(title="🆓 Free Claude Agent", theme=gr.themes.Soft()) as demo:
 
     gr.Markdown("""
 # 🆓 Free Claude Agent
@@ -131,9 +131,9 @@ if __name__ == "__main__":
         auth = (hf_user, hf_pass)
 
     demo.launch(
-        server_name="0.0.0.0",
-        server_port=int(os.getenv("PORT", "7860")),
-        share=False,
-        auth=auth,
-        theme=gr.themes.Soft(),
-    )
+    server_name="0.0.0.0",
+    server_port=int(os.getenv("PORT", "7860")),
+    share=False,
+    auth=auth,
+    # theme removed - not supported in Gradio 4 launch()
+)
