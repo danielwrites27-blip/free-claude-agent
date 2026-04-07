@@ -1,4 +1,5 @@
 """
+# Rebuild triggered: 2026-04-07
 Gradio interface for Free Claude Agent.
 Run locally:   python app.py
 Deploy:        GitHub Actions auto-pushes to HF Spaces / claw.cloud pod
