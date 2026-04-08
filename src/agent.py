@@ -449,18 +449,21 @@ class FreeAgent:
                     yield f"{result}\n"
                     return
 
-                # Check for Edit Request
-                if "edit" in lower_prompt or "update" in lower_prompt or "change" in lower_prompt:
-                    # For editing, we need to extract the NEW content. 
-                    # Since this is complex in a single prompt, we'll ask the AI to handle the logic 
-                    # BUT we expose the tool so the AI knows it exists.
-                    # NOTE: Full auto-editing requires parsing the user's intent for new code.
-                    # For now, we tell the user we can edit if they provide the full new content.
-                    yield f"🛠️ I can edit `{filepath}` safely (with backup).\nPlease provide the **full new content** you want to write, or describe the change and I will generate the code for you to approve first.\n"
-                    # We don't return here, letting the AI generate the code/proposal.
-                    # The AI can then call edit_file in a subsequent turn if we implement tool calling.
-                    # For this simple version, we just inform the user.
-                    return
+                # Check for Edit Request with Full Content
+                if any(word in lower_prompt for word in ["edit", "update", "change", "replace"]):
+                    # Look for code block with new content
+                    code_match = re.search(r'```(?:python)?\s*(.*?)```', prompt, re.DOTALL)
+                    
+                    if code_match:
+                        # User provided full new content in code block
+                        new_content = code_match.group(1).strip()
+                        result = self.edit_file(filepath, new_content)
+                        yield f"{result}\n"
+                        return
+                    else:
+                        # No code block found, ask for it
+                        yield f"🛠️ I can edit `{filepath}` safely (with backup).\nPlease provide the **full new content** in a code block like this:\n\n```python\n# your new code here\n```\n"
+                        return
 
                 # Default: Read File
                 file_content = self.read_file(filepath)
