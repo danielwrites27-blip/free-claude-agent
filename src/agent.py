@@ -18,7 +18,6 @@ from .router import ModelRouter, GROQ, SAMBANOVA, CEREBRAS
 # Max turns to keep in live conversation context (before summarizing to memory)
 MAX_HISTORY_TURNS = 12  # 12 pairs = 24 messages
 
-
 class FreeAgent:
     """100% free, token-optimized reasoning agent.
     
@@ -31,18 +30,20 @@ class FreeAgent:
         self,
         api_key: Optional[str] = None,
         daily_token_limit: int = 50000,
-        memory_path: str = "agent_memory.db",   # FIXED: was .mv2
+        memory_path: str = "agent_memory.db",
         caveman_mode: bool = True,
+        deep_reasoning_mode: bool = False,  # NEW: Added deep reasoning toggle
     ):
         self.encoder = tiktoken.get_encoding("cl100k_base")
         self.caveman_mode = caveman_mode
+        self.deep_reasoning_mode = deep_reasoning_mode  # NEW: Store the setting
 
         # ── Provider clients ──────────────────────────────────────────────
         # Groq (primary)
         groq_key = api_key or os.getenv("GROQ_API_KEY")
         if not groq_key:
             raise ValueError(
-                "GROQ_API_KEY required. Get free key: https://console.groq.com/keys "
+                "GROQ_API_KEY required. Get free key: https://console.groq.com/keys  "
             )
         self.groq_client = Groq(api_key=groq_key)
 
@@ -51,35 +52,14 @@ class FreeAgent:
         self.sambanova_client = None
         if sambanova_key:
             try:
-                # Sambanova uses OpenAI-compatible API
                 from openai import OpenAI
                 self.sambanova_client = OpenAI(
                     api_key=sambanova_key,
-                    base_url="https://api.sambanova.ai/v1 "
+                    base_url="https://api.sambanova.ai/v1"
                 )
             except ImportError:
-                pass  # openai not installed, skip
+                pass
                 
-# ── FILE READING METHOD
-    def read_file(self, filepath: str) -> str:
-        """Reads a file from the project directory and returns its content."""
-        import os
-        try:
-            # Get the root directory (parent of src/)
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            full_path = os.path.join(base_dir, filepath)
-            
-            if not os.path.exists(full_path):
-                return f"Error: File '{filepath}' not found."
-                
-            with open(full_path, 'r', encoding='utf-8') as f:
-                return f.read()
-        except Exception as e:
-            return f"Error reading file: {str(e)}"
-    # ──────────────────────────────────────────────────────────────────────
-
-    def ask_stream(self, message: str):
-        
         # Cerebras (tertiary — fastest inference)
         cerebras_key = os.getenv("CEREBRAS_API_KEY")
         self.cerebras_client = None
@@ -89,11 +69,10 @@ class FreeAgent:
                 self.cerebras_client = Cerebras(api_key=cerebras_key)
             except ImportError:
                 try:
-                    # Cerebras also has OpenAI-compatible endpoint
                     from openai import OpenAI
                     self.cerebras_client = OpenAI(
                         api_key=cerebras_key,
-                        base_url="https://api.cerebras.ai/v1 "
+                        base_url="https://api.cerebras.ai/v1"
                     )
                 except ImportError:
                     pass
@@ -107,14 +86,28 @@ class FreeAgent:
         self.memory = TokenEfficientMemory(memory_path)
         self.router = ModelRouter()
 
-        # Multi-turn conversation history (in-session, not persisted)
-        # Format: [{"role": "user"|"assistant", "content": str}, ...]
+        # Multi-turn conversation history
         self.conversation_history: List[Dict] = []
 
-        # ── Available models per provider ─────────────────────────────────
-        # Key format: "provider:model_name" — used by router
+        # ── Available models ──────────────────────────────────────────────
         self.available_models: Dict[str, dict] = {}
         self._register_available_models()
+
+    # ── FILE READING METHOD (Moved OUTSIDE of __init__) ─────────────────
+    def read_file(self, filepath: str) -> str:
+        """Reads a file from the project directory and returns its content."""
+        try:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            full_path = os.path.join(base_dir, filepath)
+            
+            if not os.path.exists(full_path):
+                return f"Error: File '{filepath}' not found."
+                
+            with open(full_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            return f"Error reading file: {str(e)}"
+    # ──────────────────────────────────────────────────────────────────────
 
     def _register_available_models(self):
         """Register which provider+model combos we actually have keys for"""
@@ -183,25 +176,45 @@ class FreeAgent:
         
         return recalled + url_context
 
-    def _build_messages(self, prompt: str, memory_context: str) -> List[Dict]:
+        def _build_messages(self, prompt: str, memory_context: str) -> List[Dict]:
         """
-        Build the full messages array for the API call:
-        [system] + [memory injection if any] + [rolling conversation history] + [current user message]
+        Build the full messages array for the API call.
+        Dynamically selects system prompt based on mode.
         """
-        messages = [{"role": "system", "content": CAVEMAN_SYSTEM_PROMPT}]
+        # 1. Determine System Prompt
+        if self.caveman_mode:
+            from .caveman import CAVEMAN_SYSTEM_PROMPT
+            system_content = CAVEMAN_SYSTEM_PROMPT
+        elif self.deep_reasoning_mode:
+            # Deep Reasoning Mode: Forces step-by-step thinking
+            system_content = (
+                "You are an expert AI assistant. You ALWAYS think step-by-step before answering.\n"
+                "For every query, you must analyze constraints, edge cases, and logic internally.\n"
+                "Provide clear, structured, and thorough answers. Use Markdown for formatting.\n"
+                "If the user asks for code, explain the logic first, then provide the solution.\n"
+                "Prioritize accuracy and depth over brevity."
+            )
+        else:
+            # Normal Mode: Balanced helpful assistant
+            system_content = (
+                "You are a helpful, harmless, and honest AI assistant. "
+                "Answer clearly and concisely, but provide detail when needed."
+            )
 
-        # Inject long-term memory as a system-level context block
+        messages = [{"role": "system", "content": system_content}]
+
+        # 2. Inject long-term memory
         if memory_context:
             messages.append({
                 "role": "system",
                 "content": f"Relevant past context:\n{memory_context}"
             })
 
-        # Rolling conversation history (last N turns)
+        # 3. Rolling conversation history
         history_to_include = self.conversation_history[-MAX_HISTORY_TURNS * 2:]
         messages.extend(history_to_include)
 
-        # Current user message
+        # 4. Current user message
         messages.append({"role": "user", "content": prompt})
 
         return messages
