@@ -160,7 +160,7 @@ class FreeAgent:
         except Exception as e:
             return f"Error fetching URL: {str(e)}"
 
-    def _get_memory_context(self, prompt: str) -> str:
+        def _get_memory_context(self, prompt: str) -> str:
         """Retrieve relevant long-term memories for this prompt"""
         recalled = self.memory.recall(prompt, max_tokens=800)
         
@@ -176,7 +176,7 @@ class FreeAgent:
         
         return recalled + url_context
 
-        def _build_messages(self, prompt: str, memory_context: str) -> List[Dict]:
+    def _build_messages(self, prompt: str, memory_context: str) -> List[Dict]:
         """
         Build the full messages array for the API call.
         Dynamically selects system prompt based on mode.
