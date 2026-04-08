@@ -166,14 +166,24 @@ class FreeAgent:
             with open(backup_path, 'w', encoding='utf-8') as f:
                 f.write(original_content)
 
-            # 4. Write New Content
+            # 4. ⚠️ NEW: Validate Python Syntax BEFORE writing
+            if filepath.endswith('.py'):
+                try:
+                    compile(new_content, full_path, 'exec')
+                except SyntaxError as e:
+                    # Restore backup immediately if validation fails
+                    with open(full_path, 'w', encoding='utf-8') as f:
+                        f.write(original_content)
+                    # Remove the failed backup file to avoid confusion
+                    if os.path.exists(backup_path):
+                        os.remove(backup_path)
+                    return f"⛔ **Syntax Error Detected!** Changes rejected.\nLine {e.lineno}: {e.msg}\n💾 Backup restored automatically."
+
+            # 5. Write New Content (Only if validation passes)
             with open(full_path, 'w', encoding='utf-8') as f:
                 f.write(new_content)
 
-            return f"✅ Successfully updated `{filepath}`.\n💾 Backup saved to `{filepath}.bak`"
-
-        except Exception as e:
-            return f"❌ Error editing file: {str(e)}"
+            return f"✅ Successfully updated `{filepath}`.\n💾 Backup saved to `{filepath}.bak`\n🛡️ Syntax validation passed."
     # ──────────────────────────────────────────────────────────────────────────
 
     def _register_available_models(self):
