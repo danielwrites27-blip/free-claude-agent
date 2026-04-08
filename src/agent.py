@@ -139,7 +139,7 @@ class FreeAgent:
             return f"Error reading file: {str(e)}"
     # ──────────────────────────────────────────────────────────────────────
 
-        # ── SAFE FILE EDITING METHOD ──────────────────────────────────────────────
+            # ── SAFE FILE EDITING METHOD ──────────────────────────────────────────────
     def edit_file(self, filepath: str, new_content: str) -> str:
         """Safely edits a file with backup and validation."""
         try:
@@ -184,6 +184,9 @@ class FreeAgent:
                 f.write(new_content)
 
             return f"✅ Successfully updated `{filepath}`.\n💾 Backup saved to `{filepath}.bak`\n🛡️ Syntax validation passed."
+        
+        except Exception as e:
+            return f"❌ Error editing file: {str(e)}"
     # ──────────────────────────────────────────────────────────────────────────
 
     def _register_available_models(self):
