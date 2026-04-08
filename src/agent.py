@@ -139,6 +139,43 @@ class FreeAgent:
             return f"Error reading file: {str(e)}"
     # ──────────────────────────────────────────────────────────────────────
 
+        # ── SAFE FILE EDITING METHOD ──────────────────────────────────────────────
+    def edit_file(self, filepath: str, new_content: str) -> str:
+        """Safely edits a file with backup and validation."""
+        try:
+            # 1. Security Check: Prevent directory traversal and system files
+            if ".." in filepath or filepath.startswith("/"):
+                return "⛔ Security Error: Invalid file path."
+            
+            allowed_extensions = ['.py', '.txt', '.md', '.json', '.yaml', '.env']
+            if not any(filepath.endswith(ext) for ext in allowed_extensions):
+                return f"⛔ Security Error: Cannot edit {filepath}. Allowed: {', '.join(allowed_extensions)}"
+
+            # 2. Calculate Path
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            full_path = os.path.join(base_dir, filepath)
+
+            if not os.path.exists(full_path):
+                return f"Error: File '{filepath}' not found."
+
+            # 3. Create Backup
+            backup_path = full_path + ".bak"
+            with open(full_path, 'r', encoding='utf-8') as f:
+                original_content = f.read()
+            
+            with open(backup_path, 'w', encoding='utf-8') as f:
+                f.write(original_content)
+
+            # 4. Write New Content
+            with open(full_path, 'w', encoding='utf-8') as f:
+                f.write(new_content)
+
+            return f"✅ Successfully updated `{filepath}`.\n💾 Backup saved to `{filepath}.bak`"
+
+        except Exception as e:
+            return f"❌ Error editing file: {str(e)}"
+    # ──────────────────────────────────────────────────────────────────────────
+
     def _register_available_models(self):
         """Register which provider+model combos we actually have keys for"""
         # Groq always available (required key)
@@ -387,6 +424,49 @@ class FreeAgent:
                         yield f"✅ **Found file:** `{filepath}`\n\n"
                     yield f"{file_content}\n"
                     return # Stop here
+                else:
+                    yield f"⚠️ {file_content}\n\n"
+        # ──────────────────────────────────────────────────────────────────────
+
+        # ── FILE OPERATIONS INTERCEPTOR ───────────────────────────────────────────────
+        lower_prompt = prompt.lower()
+        
+        # Detect File Operations
+        if any(word in lower_prompt for word in ["read file", "read ", "show me ", "check line", "what is on line", "edit ", "update ", "change "]):
+            
+            # Extract filename
+            match = re.search(r'([\w\./]+\.(py|txt|md|json|yaml|yml|env|toml))', lower_prompt)
+            if match:
+                filepath = match.group(1)
+                if "/" not in filepath and "src" in lower_prompt:
+                    filepath = "src/" + filepath
+                
+                # Check for Line Number Request
+                line_match = re.search(r'line\s*(\d+)', lower_prompt)
+                if line_match and ("read" in lower_prompt or "show" in lower_prompt or "check" in lower_prompt):
+                    line_num = int(line_match.group(1))
+                    result = self.read_file(filepath, line_number=line_num)
+                    yield f"{result}\n"
+                    return
+
+                # Check for Edit Request
+                if "edit" in lower_prompt or "update" in lower_prompt or "change" in lower_prompt:
+                    # For editing, we need to extract the NEW content. 
+                    # Since this is complex in a single prompt, we'll ask the AI to handle the logic 
+                    # BUT we expose the tool so the AI knows it exists.
+                    # NOTE: Full auto-editing requires parsing the user's intent for new code.
+                    # For now, we tell the user we can edit if they provide the full new content.
+                    yield f"🛠️ I can edit `{filepath}` safely (with backup).\nPlease provide the **full new content** you want to write, or describe the change and I will generate the code for you to approve first.\n"
+                    # We don't return here, letting the AI generate the code/proposal.
+                    # The AI can then call edit_file in a subsequent turn if we implement tool calling.
+                    # For this simple version, we just inform the user.
+                    return
+
+                # Default: Read File
+                file_content = self.read_file(filepath)
+                if not file_content.startswith("Error"):
+                    yield f"✅ **Found file:** `{filepath}`\n\n```\n{file_content}\n```\n"
+                    return
                 else:
                     yield f"⚠️ {file_content}\n\n"
         # ──────────────────────────────────────────────────────────────────────
