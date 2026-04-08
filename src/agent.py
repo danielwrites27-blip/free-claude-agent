@@ -160,7 +160,7 @@ class FreeAgent:
         except Exception as e:
             return f"Error fetching URL: {str(e)}"
 
-        def _get_memory_context(self, prompt: str) -> str:
+    def _get_memory_context(self, prompt: str) -> str:
         """Retrieve relevant long-term memories for this prompt"""
         recalled = self.memory.recall(prompt, max_tokens=800)
         
