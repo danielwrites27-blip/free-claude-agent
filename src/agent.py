@@ -466,13 +466,17 @@ class FreeAgent:
             yield "⚠️ Daily token limit reached. Resets in 24h."
             return
 # ── FILE READING INTERCEPTOR ───────────────────────────────────────────
-        # Detect if user wants to read a file
-        if any(word in prompt.lower() for word in ["read file", "show me ", "check line", "what is on line", "line "]):
+        # Detect if user wants ONLY to read/show a file (no analysis needed)
+        # If the prompt also asks to "fix", "analyze", "why", "bug", we let it pass to the AI
+        simple_read_only = any(word in prompt.lower() for word in ["show me ", "check line", "what is on line", "line "])
+        has_analysis_request = any(word in prompt.lower() for word in ["fix", "analyze", "why", "bug", "error", "tell me why", "explain"])
+        
+        if simple_read_only and not has_analysis_request:
             # Extract filename
             match = re.search(r'([\w\./]+\.(py|txt|md|json|yaml|yml|env|toml))', prompt)
             if match:
                 filepath = match.group(1)
-# Only add src/ if the file is known to be in src/ AND user didn't specify a path
+                # Only add src/ if the file is known to be in src/
                 known_src_files = ['agent.py', 'caveman.py', 'memory.py', 'router.py']
                 if "/" not in filepath and filepath in known_src_files:
                     filepath = "src/" + filepath
@@ -489,9 +493,10 @@ class FreeAgent:
                     else:
                         yield f"✅ **Found file:** `{filepath}`\n\n"
                     yield f"{file_content}\n"
-                    return # Stop here
+                    return # Stop here ONLY for simple reads
                 else:
                     yield f"⚠️ {file_content}\n\n"
+                    # Continue to AI to explain the error
         # ──────────────────────────────────────────────────────────────────────
 
         # ── FILE OPERATIONS INTERCEPTOR ───────────────────────────────────────────────
