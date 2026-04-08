@@ -408,7 +408,9 @@ class FreeAgent:
             match = re.search(r'([\w\./]+\.(py|txt|md|json|yaml|yml|env|toml))', prompt)
             if match:
                 filepath = match.group(1)
-                if "/" not in filepath and "src" in prompt.lower():
+# Only add src/ if the file is known to be in src/ AND user didn't specify a path
+                known_src_files = ['agent.py', 'caveman.py', 'memory.py', 'router.py']
+                if "/" not in filepath and filepath in known_src_files:
                     filepath = "src/" + filepath
                 
                 # Check if user asked for a specific line number
@@ -438,7 +440,10 @@ class FreeAgent:
             match = re.search(r'([\w\./]+\.(py|txt|md|json|yaml|yml|env|toml))', lower_prompt)
             if match:
                 filepath = match.group(1)
-                if "/" not in filepath and "src" in lower_prompt:
+                
+                # Only add src/ if the file is known to be in src/
+                known_src_files = ['agent.py', 'caveman.py', 'memory.py', 'router.py']
+                if "/" not in filepath and filepath in known_src_files:
                     filepath = "src/" + filepath
                 
                 # Check for Line Number Request
