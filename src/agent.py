@@ -403,7 +403,7 @@ class FreeAgent:
             return
 # ── FILE READING INTERCEPTOR ───────────────────────────────────────────
         # Detect if user wants to read a file
-        if any(word in prompt.lower() for word in ["read file", "read ", "show me ", "check line", "what is on line", "line "]):
+        if any(word in prompt.lower() for word in ["read file", "show me ", "check line", "what is on line", "line "]):
             # Extract filename
             match = re.search(r'([\w\./]+\.(py|txt|md|json|yaml|yml|env|toml))', prompt)
             if match:
