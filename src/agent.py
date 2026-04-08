@@ -253,6 +253,48 @@ class FreeAgent:
         
         return recalled + url_context
 
+    def _get_multi_file_context(self, prompt: str) -> str:
+        """
+        If the prompt suggests a complex bug or feature request, 
+        automatically read core project files to provide context.
+        """
+        # Keywords that trigger multi-file analysis
+        trigger_words = ["bug", "error", "fix", "broken", "not working", "issue", "debug", "feature", "add", "update"]
+        
+        if not any(word in prompt.lower() for word in trigger_words):
+            return ""  # No need for extra context
+        
+        # Files to automatically read for context
+        core_files = [
+            "app.py",
+            "src/agent.py",
+            "src/caveman.py"
+        ]
+        
+        context_parts = []
+        context_parts.append("--- PROJECT CONTEXT ---")
+        
+        for filepath in core_files:
+            try:
+                # Re-use existing read_file logic but without line highlighting
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                full_path = os.path.join(base_dir, filepath)
+                
+                if os.path.exists(full_path):
+                    with open(full_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        # Truncate very large files to avoid token limits (keep first 1500 chars)
+                        if len(content) > 1500:
+                            content = content[:1500] + "\n... [truncated]"
+                        
+                        context_parts.append(f"\n## File: {filepath}\n{content}")
+            except Exception:
+                continue  # Skip files that can't be read
+        
+        context_parts.append("--- END PROJECT CONTEXT ---")
+        
+        return "\n".join(context_parts) if len(context_parts) > 1 else ""
+    
     def _build_messages(self, prompt: str, memory_context: str) -> List[Dict]:
         """
         Build the full messages array for the API call.
@@ -278,20 +320,29 @@ class FreeAgent:
                 "Answer clearly and concisely, but provide detail when needed."
             )
 
+        # Initialize messages list ONCE
         messages = [{"role": "system", "content": system_content}]
 
-        # 2. Inject long-term memory
+        # 2. Inject Multi-File Context (NEW)
+        multi_file_context = self._get_multi_file_context(prompt)
+        if multi_file_context:
+            messages.append({
+                "role": "system",
+                "content": multi_file_context
+            })
+
+        # 3. Inject long-term memory
         if memory_context:
             messages.append({
                 "role": "system",
                 "content": f"Relevant past context:\n{memory_context}"
             })
 
-        # 3. Rolling conversation history
+        # 4. Rolling conversation history
         history_to_include = self.conversation_history[-MAX_HISTORY_TURNS * 2:]
         messages.extend(history_to_include)
 
-        # 4. Current user message
+        # 5. Current user message
         messages.append({"role": "user", "content": prompt})
 
         return messages
