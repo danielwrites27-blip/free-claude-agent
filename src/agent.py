@@ -59,7 +59,27 @@ class FreeAgent:
                 )
             except ImportError:
                 pass  # openai not installed, skip
+                
+# ── FILE READING METHOD
+    def read_file(self, filepath: str) -> str:
+        """Reads a file from the project directory and returns its content."""
+        import os
+        try:
+            # Get the root directory (parent of src/)
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            full_path = os.path.join(base_dir, filepath)
+            
+            if not os.path.exists(full_path):
+                return f"Error: File '{filepath}' not found."
+                
+            with open(full_path, 'r', encoding='utf-8') as f:
+                return f.read()
+        except Exception as e:
+            return f"Error reading file: {str(e)}"
+    # ──────────────────────────────────────────────────────────────────────
 
+    def ask_stream(self, message: str):
+        
         # Cerebras (tertiary — fastest inference)
         cerebras_key = os.getenv("CEREBRAS_API_KEY")
         self.cerebras_client = None
