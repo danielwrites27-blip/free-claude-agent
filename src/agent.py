@@ -93,27 +93,48 @@ class FreeAgent:
         self.available_models: Dict[str, dict] = {}
         self._register_available_models()
 
-    # ── FILE READING METHOD ──────────────────────────────────────────────
-    def read_file(self, filepath: str) -> str:
-        """Reads a file from the project directory and returns its content."""
+       # ── FILE READING METHOD ──────────────────────────────────────────────
+    def read_file(self, filepath: str, line_number: int = None) -> str:
+        """Reads a file from the project directory. 
+        If line_number is provided, highlights that specific line."""
         try:
-            # Calculate absolute path of this file (src/agent.py)
             current_file = os.path.abspath(__file__)
-            # Go up one level to 'src/', then another to root '/app'
             base_dir = os.path.dirname(os.path.dirname(current_file))
             full_path = os.path.join(base_dir, filepath)
             
             if not os.path.exists(full_path):
-                # Return detailed debug info to help us fix the path
-                return (
-                    f"Error: File '{filepath}' not found.\n"
-                    f"Looking at: {full_path}\n"
-                    f"Current Working Dir: {os.getcwd()}\n"
-                    f"Base Dir Calculated: {base_dir}"
-                )
+                return f"Error: File '{filepath}' not found."
                 
             with open(full_path, 'r', encoding='utf-8') as f:
-                return f.read()
+                lines = f.readlines()
+            
+            # If no line number requested, return full content
+            if line_number is None:
+                return "".join(lines)
+            
+            # Validate line number
+            if line_number < 1 or line_number > len(lines):
+                return f"Error: Line {line_number} out of range. File has {len(lines)} lines."
+            
+            # Highlight specific line with context (5 lines before/after)
+            start = max(0, line_number - 6)
+            end = min(len(lines), line_number + 5)
+            
+            output = [f"📄 Showing lines {start+1}-{end} of {filepath}:\n\n```python\n"]
+            
+            for i in range(start, end):
+                line_num = i + 1
+                content = lines[i].rstrip()
+                
+                if line_num == line_number:
+                    # Highlight the target line
+                    output.append(f"{line_num:4d} >>> {content}\n")
+                else:
+                    output.append(f"{line_num:4d}     {content}\n")
+            
+            output.append("```")
+            return "".join(output)
+            
         except Exception as e:
             return f"Error reading file: {str(e)}"
     # ──────────────────────────────────────────────────────────────────────
@@ -343,26 +364,31 @@ class FreeAgent:
         if self.tokens_used_today >= self.daily_token_limit:
             yield "⚠️ Daily token limit reached. Resets in 24h."
             return
-# ── FILE READING INTERCEPTOR (ADD THIS BLOCK) ────────────────────────
-        # Detect if user wants to read a file (e.g., "read app.py", "check line 10 in src/agent.py")
-        if any(word in prompt.lower() for word in ["read file", "read ", "show me ", "check line", "what is on line"]):
-            # Extract filename using regex (looks for .py, .txt, .md, .json etc.)
+# ── FILE READING INTERCEPTOR ───────────────────────────────────────────
+        # Detect if user wants to read a file
+        if any(word in prompt.lower() for word in ["read file", "read ", "show me ", "check line", "what is on line", "line "]):
+            # Extract filename
             match = re.search(r'([\w\./]+\.(py|txt|md|json|yaml|yml|env|toml))', prompt)
             if match:
                 filepath = match.group(1)
-                # Clean up path if it includes extra words
                 if "/" not in filepath and "src" in prompt.lower():
                     filepath = "src/" + filepath
                 
-                file_content = self.read_file(filepath)
+                # Check if user asked for a specific line number
+                line_match = re.search(r'line\s*(\d+)', prompt.lower())
+                target_line = int(line_match.group(1)) if line_match else None
+                
+                file_content = self.read_file(filepath, line_number=target_line)
                 
                 if not file_content.startswith("Error"):
-                    yield f"✅ **Found file:** `{filepath}`\n\n"
-                    yield f"```\n{file_content}\n```\n"
-                    return # Stop here, don't call AI
+                    if target_line:
+                        yield f"✅ **Line {target_line} of `{filepath}`:**\n\n"
+                    else:
+                        yield f"✅ **Found file:** `{filepath}`\n\n"
+                    yield f"{file_content}\n"
+                    return # Stop here
                 else:
                     yield f"⚠️ {file_content}\n\n"
-                    # Continue to AI to explain the error
         # ──────────────────────────────────────────────────────────────────────
         
         memory_context = self._get_memory_context(prompt)
