@@ -93,15 +93,24 @@ class FreeAgent:
         self.available_models: Dict[str, dict] = {}
         self._register_available_models()
 
-    # ── FILE READING METHOD (Moved OUTSIDE of __init__) ─────────────────
+    # ── FILE READING METHOD ──────────────────────────────────────────────
     def read_file(self, filepath: str) -> str:
         """Reads a file from the project directory and returns its content."""
         try:
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            # Calculate absolute path of this file (src/agent.py)
+            current_file = os.path.abspath(__file__)
+            # Go up one level to 'src/', then another to root '/app'
+            base_dir = os.path.dirname(os.path.dirname(current_file))
             full_path = os.path.join(base_dir, filepath)
             
             if not os.path.exists(full_path):
-                return f"Error: File '{filepath}' not found."
+                # Return detailed debug info to help us fix the path
+                return (
+                    f"Error: File '{filepath}' not found.\n"
+                    f"Looking at: {full_path}\n"
+                    f"Current Working Dir: {os.getcwd()}\n"
+                    f"Base Dir Calculated: {base_dir}"
+                )
                 
             with open(full_path, 'r', encoding='utf-8') as f:
                 return f.read()
