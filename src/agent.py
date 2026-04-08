@@ -539,13 +539,18 @@ class FreeAgent:
                         yield f"🛠️ I can edit `{filepath}` safely (with backup).\nPlease provide the **full new content** in a code block like this:\n\n```python\n# your new code here\n```\n"
                         return
 
-                # Default: Read File
-                file_content = self.read_file(filepath)
-                if not file_content.startswith("Error"):
-                    yield f"✅ **Found file:** `{filepath}`\n\n```\n{file_content}\n```\n"
-                    return
-                else:
-                    yield f"⚠️ {file_content}\n\n"
+                # Default: Read File (BUT check if we should stop or continue to AI)
+                # If the user asked to "fix", "analyze", "why", "bug", DO NOT return here.
+                # Let the code fall through to the AI so it can analyze the content.
+                if not has_analysis_request: 
+                    file_content = self.read_file(filepath)
+                    if not file_content.startswith("Error"):
+                        yield f"✅ **Found file:** `{filepath}`\n\n```\n{file_content}\n```\n"
+                        return
+                    else:
+                        yield f"⚠️ {file_content}\n\n"
+                # If has_analysis_request is True, we skip the return above 
+                # and let the code continue to _build_messages below.
         # ──────────────────────────────────────────────────────────────────────
         
         memory_context = self._get_memory_context(prompt)
