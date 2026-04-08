@@ -334,7 +334,28 @@ class FreeAgent:
         if self.tokens_used_today >= self.daily_token_limit:
             yield "⚠️ Daily token limit reached. Resets in 24h."
             return
-
+# ── FILE READING INTERCEPTOR (ADD THIS BLOCK) ────────────────────────
+        # Detect if user wants to read a file (e.g., "read app.py", "check line 10 in src/agent.py")
+        if any(word in prompt.lower() for word in ["read file", "read ", "show me ", "check line", "what is on line"]):
+            # Extract filename using regex (looks for .py, .txt, .md, .json etc.)
+            match = re.search(r'([\w\./]+\.(py|txt|md|json|yaml|yml|env|toml))', prompt)
+            if match:
+                filepath = match.group(1)
+                # Clean up path if it includes extra words
+                if "/" not in filepath and "src" in prompt.lower():
+                    filepath = "src/" + filepath
+                
+                file_content = self.read_file(filepath)
+                
+                if not file_content.startswith("Error"):
+                    yield f"✅ **Found file:** `{filepath}`\n\n"
+                    yield f"```\n{file_content}\n```\n"
+                    return # Stop here, don't call AI
+                else:
+                    yield f"⚠️ {file_content}\n\n"
+                    # Continue to AI to explain the error
+        # ──────────────────────────────────────────────────────────────────────
+        
         memory_context = self._get_memory_context(prompt)
         messages = self._build_messages(prompt, memory_context)
         model, provider = self.router.select_model(prompt, self.available_models)
