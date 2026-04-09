@@ -507,8 +507,8 @@ class FreeAgent:
 
         memory_context = self._get_memory_context(prompt)
         messages = self._build_messages(prompt, memory_context)
-        model, provider = self.router.select_model(prompt, self.available_models)
-        model_label = self.router.get_complexity_label(prompt)
+        model, provider = self.router.select_model(prompt, self.available_models, force_reasoning=self.deep_reasoning_mode)
+        model_label = "🧠 70B" if self.deep_reasoning_mode else self.router.get_complexity_label(prompt)
 
         # Try selected provider, fall back to Groq if it fails
         providers_to_try = [(model, provider)]
@@ -674,8 +674,8 @@ class FreeAgent:
         memory_context = self._get_memory_context(prompt)
         messages = self._build_messages(prompt, memory_context)
 
-        model, provider = self.router.select_model(prompt, self.available_models)
-        model_label = self.router.get_complexity_label(prompt)
+        model, provider = self.router.select_model(prompt, self.available_models, force_reasoning=self.deep_reasoning_mode)
+        model_label = "🧠 70B" if self.deep_reasoning_mode else self.router.get_complexity_label(prompt)
 
         # Try selected provider, fall back gracefully
         providers_to_try = [(model, provider)]
