@@ -33,6 +33,7 @@ class ModelRouter:
 
         self.reasoning_keywords = set(self.config.get("reasoning_keywords", [
             "why", "how", "analyze", "compare", "explain", "debug",
+            "what does", "what is", "what are", "how does", "tell me",
             "optimize", "fix", "difference", "tradeoff", "architecture",
             "design", "implement", "write", "create", "build", "review",
             "refactor", "plan", "strategy", "best", "recommend"
