@@ -337,6 +337,7 @@ class FreeAgent:
             ("memory",          "src/memory.py",    None),
             ("stream",          "src/agent.py",     "ask_stream"),
             ("code_runner",     "src/code_runner.py", None),
+            ("code runner",     "src/code_runner.py", None),
         ]
 
         files_to_read: dict[str, str | None] = {}  # filepath → func_name or None
