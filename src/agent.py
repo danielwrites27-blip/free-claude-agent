@@ -712,6 +712,13 @@ class FreeAgent:
         # ──────────────────────────────────────────────────────────────────────
 
         memory_context = self._get_memory_context(prompt)
+        search_triggers = ["search for", "look up", "find me", "what is the latest",
+                           "latest", "current", "news about", "who is", "what happened",
+                           "today", "recently", "right now"]
+        if any(t in prompt.lower() for t in search_triggers):
+            search_context = self.tavily_search(prompt)
+            if search_context:
+                memory_context = f"{search_context}\n\n{memory_context}".strip()
         messages = self._build_messages(prompt, memory_context)
 
         model, provider = self.router.select_model(prompt, self.available_models, force_reasoning=self.deep_reasoning_mode)
