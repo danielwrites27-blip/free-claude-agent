@@ -387,11 +387,17 @@ class FreeAgent:
                     content = self._extract_function(raw, func_name)
                     label = f"{filepath} → {func_name}()"
                 else:
-                    # Whole file — 6000 chars gives ~750 tokens, 2× the old limit
+                    # Whole file — 9000 chars gives ~750+ tokens, 2× the old limit
                     # and actually reaches the functions that matter
-                    MAX_CHARS = 6000
-                    # Small files: read whole. Large files: truncate with note.
-                    if len(raw) <= MAX_CHARS:
+                    MAX_CHARS = 9000
+                    # agent.py is 35k chars — too large for flat read.
+                    # Extract the 3 most important functions instead.
+                    if filepath == "src/agent.py" and len(raw) > MAX_CHARS:
+                        key_funcs = ["ask_stream", "_build_messages", "_get_multi_file_context"]
+                        parts = [self._extract_function(raw, f) for f in key_funcs]
+                        content = "\n\n".join(p for p in parts if p)
+                        label = f"{filepath} → [ask_stream, _build_messages, _get_multi_file_context]"
+                    elif len(raw) <= MAX_CHARS:
                         content = raw
                     else:
                         content = raw[:MAX_CHARS] + f"\n... [truncated at {MAX_CHARS} chars — ask to read specific lines or functions]"
