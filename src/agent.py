@@ -76,7 +76,9 @@ class FreeAgent:
                     )
                 except ImportError:
                     pass
-
+# Tavily (web search)
+        self.tavily_key = os.getenv("TAVILY_API_KEY")
+        
         # ── Budget tracking ───────────────────────────────────────────────
         self.daily_token_limit = daily_token_limit
         self.tokens_used_today = 0
@@ -256,6 +258,28 @@ class FreeAgent:
         
         return recalled + url_context
 
+    def tavily_search(self, query: str) -> str:
+        """Search the web via Tavily and return formatted results."""
+        if not self.tavily_key:
+            return ""
+        try:
+            import requests
+            r = requests.post("https://api.tavily.com/search", json={
+                "api_key": self.tavily_key,
+                "query": query,
+                "max_results": 3
+            }, timeout=5)
+            results = r.json().get("results", [])
+            if not results:
+                return ""
+            parts = ["🌐 Web Search Results:"]
+            for i, res in enumerate(results, 1):
+                parts.append(f"{i}. {res.get('title','')}\n{res.get('url','')}\n{res.get('content','')[:300]}")
+            return "\n\n".join(parts)
+        except Exception as e:
+            print(f"[Tavily] Search failed: {e}", flush=True)
+            return ""
+    
     def _extract_function(self, source: str, func_name: str) -> str:
         """Extract a specific function/method from Python source by name.
         Returns the full function body, or the first 2000 chars if not found."""
@@ -512,6 +536,16 @@ class FreeAgent:
             return "⚠️ Daily token limit reached. Resets in 24h."
 
         memory_context = self._get_memory_context(prompt)
+        # Web search injection
+        search_triggers = ["search for", "look up", "find me", "what is the latest",
+                           "latest", "current", "news about", "who is", "what happened",
+                           "today", "recently", "right now"]
+        search_context = ""
+        if any(t in prompt.lower() for t in search_triggers):
+            search_context = self.tavily_search(prompt)
+            if search_context:
+                memory_context = f"{search_context}\n\n{memory_context}".strip()
+
         messages = self._build_messages(prompt, memory_context)
         model, provider = self.router.select_model(prompt, self.available_models, force_reasoning=self.deep_reasoning_mode)
         model_label = "🧠 70B" if self.deep_reasoning_mode else self.router.get_complexity_label(prompt)
