@@ -70,7 +70,8 @@ class ModelRouter:
     def select_model(
         self,
         prompt: str,
-        available_models: Dict[str, dict]
+        available_models: Dict[str, dict],
+        force_reasoning: bool = False
     ) -> Tuple[str, str]:
         """
         Select (model_name, provider) based on complexity + availability.
@@ -81,7 +82,7 @@ class ModelRouter:
         - Reasoning → 70B on Groq → 70B on Sambanova → 70B on Cerebras → fall back to 8B
         - Complex → same as reasoning (no 405B on free tier)
         """
-        complexity = self.estimate_complexity(prompt)
+        complexity = "reasoning" if force_reasoning else self.estimate_complexity(prompt)
 
         # Priority lists: (model_name, provider)
         priority_map = {
