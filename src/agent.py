@@ -310,6 +310,8 @@ class FreeAgent:
             # Component words
             "caveman", "token", "compress", "mode", "routing", "router",
             "memory", "stream", "reasoning", "context", "inject",
+            "code_runner", "code runner", "code runner.py",
+            "what does", "what is", "what are", "how does", "tell me",
         ]
 
         triggered = any(word in prompt_lower for word in trigger_words)
