@@ -256,47 +256,144 @@ class FreeAgent:
         
         return recalled + url_context
 
+    def _extract_function(self, source: str, func_name: str) -> str:
+        """Extract a specific function/method from Python source by name.
+        Returns the full function body, or the first 2000 chars if not found."""
+        lines = source.splitlines()
+        result = []
+        in_func = False
+        func_indent = 0
+
+        for line in lines:
+            stripped = line.lstrip()
+            indent = len(line) - len(stripped)
+
+            if not in_func:
+                if (stripped.startswith(f"def {func_name}(")
+                        or stripped.startswith(f"async def {func_name}(")):
+                    in_func = True
+                    func_indent = indent
+                    result.append(line)
+            else:
+                # End of function: new def/class at same or lower indent level
+                if (stripped and indent <= func_indent
+                        and (stripped.startswith("def ")
+                             or stripped.startswith("class ")
+                             or stripped.startswith("async def "))):
+                    break
+                result.append(line)
+
+        if result:
+            return "\n".join(result)
+        # Function not found — fall back to first 2000 chars of the file
+        return source[:2000] + "\n... [function not found — showing file start]"
+
     def _get_multi_file_context(self, prompt: str) -> str:
         """
-        If the prompt suggests a complex bug or feature request, 
-        automatically read core project files to provide context.
+        Smartly injects relevant code snippets into the LLM context.
+
+        - Trigger detection is broad (includes 'why', 'how', 'explain', etc.)
+        - Focuses on the specific file/function mentioned in the prompt
+        - Logs trigger/file/size info to stdout for debugging
         """
-        # Keywords that trigger multi-file analysis
-        trigger_words = ["bug", "error", "fix", "broken", "not working", "issue", "debug", "feature", "add", "update"]
-        
-        if not any(word in prompt.lower() for word in trigger_words):
-            return ""  # No need for extra context
-        
-        # Files to automatically read for context
-        core_files = [
-            "app.py",
-            "src/agent.py",
-            "src/caveman.py"
+        prompt_lower = prompt.lower()
+
+        # ── Expanded trigger words ────────────────────────────────────────
+        # OLD list was too narrow — 'why is caveman mode not saving tokens?'
+        # matched NOTHING and returned "" immediately.
+        trigger_words = [
+            "bug", "error", "fix", "broken", "not working", "issue", "debug",
+            "feature", "add", "update",
+            # Analysis words (the main missing category)
+            "why", "how", "explain", "analyze", "analyse", "understand",
+            "not saving", "not working", "isn't", "doesn't",
+            # Component words
+            "caveman", "token", "compress", "mode", "routing", "router",
+            "memory", "stream", "reasoning", "context", "inject",
         ]
-        
-        context_parts = []
-        context_parts.append("--- PROJECT CONTEXT ---")
-        
-        for filepath in core_files:
+
+        triggered = any(word in prompt_lower for word in trigger_words)
+        print(f"[MultiFileContext] Trigger detected: {triggered}", flush=True)
+
+        if not triggered:
+            return ""
+
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        # ── Smart focus: keyword → (file, function_to_extract) ───────────
+        # Instead of dumping whole files truncated at the TOP (which misses all
+        # relevant functions), we extract only the relevant function when we can.
+        keyword_focus = [
+            # (keyword_in_prompt, filepath, function_name_or_None)
+            ("caveman",         "src/caveman.py",   None),           # small file, read whole
+            ("compress",        "src/caveman.py",   None),
+            ("token",           "src/caveman.py",   None),
+            ("_build_messages", "src/agent.py",     "_build_messages"),
+            ("deep reasoning",  "src/agent.py",     "_build_messages"),
+            ("multi_file",      "src/agent.py",     "_get_multi_file_context"),
+            ("context inject",  "src/agent.py",     "_get_multi_file_context"),
+            ("routing",         "src/router.py",    None),
+            ("router",          "src/router.py",    None),
+            ("memory",          "src/memory.py",    None),
+            ("stream",          "src/agent.py",     "ask_stream"),
+        ]
+
+        files_to_read: dict[str, str | None] = {}  # filepath → func_name or None
+
+        for keyword, filepath, func_name in keyword_focus:
+            if keyword in prompt_lower:
+                # Don't overwrite a focused extraction with a broader None
+                if filepath not in files_to_read or files_to_read[filepath] is None:
+                    files_to_read[filepath] = func_name
+
+        # Default: read all three core files when no specific focus matched
+        if not files_to_read:
+            files_to_read = {
+                "app.py":          None,
+                "src/agent.py":    None,
+                "src/caveman.py":  None,
+            }
+
+        print(f"[MultiFileContext] Files to read: {list(files_to_read.keys())}", flush=True)
+
+        context_parts = ["--- PROJECT CONTEXT (AUTO-INJECTED) ---"]
+        total_chars = 0
+
+        for filepath, func_name in files_to_read.items():
+            full_path = os.path.join(base_dir, filepath)
+
+            if not os.path.exists(full_path):
+                print(f"[MultiFileContext] WARNING: {full_path} not found!", flush=True)
+                continue
+
             try:
-                # Re-use existing read_file logic but without line highlighting
-                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                full_path = os.path.join(base_dir, filepath)
-                
-                if os.path.exists(full_path):
-                    with open(full_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                        # Truncate very large files to avoid token limits (keep first 1500 chars)
-                        if len(content) > 1500:
-                            content = content[:1500] + "\n... [truncated]"
-                        
-                        context_parts.append(f"\n## File: {filepath}\n{content}")
-            except Exception:
-                continue  # Skip files that can't be read
-        
+                with open(full_path, "r", encoding="utf-8") as f:
+                    raw = f.read()
+
+                if func_name:
+                    # Smart extraction: pull only the relevant function
+                    content = self._extract_function(raw, func_name)
+                    label = f"{filepath} → {func_name}()"
+                else:
+                    # Whole file — 3000 chars gives ~750 tokens, 2× the old limit
+                    # and actually reaches the functions that matter
+                    MAX_CHARS = 3000
+                    content = raw if len(raw) <= MAX_CHARS else (
+                        raw[:MAX_CHARS] + "\n... [truncated — ask to read specific lines]"
+                    )
+                    label = filepath
+
+                context_parts.append(f"\n### {label}\n```python\n{content}\n```")
+                total_chars += len(content)
+
+            except Exception as e:
+                print(f"[MultiFileContext] Error reading {filepath}: {e}", flush=True)
+                continue
+
+        print(f"[MultiFileContext] Total context chars injected: {total_chars}", flush=True)
+
         context_parts.append("--- END PROJECT CONTEXT ---")
-        
-        return "\n".join(context_parts) if len(context_parts) > 1 else ""
+        return "\n".join(context_parts) if len(context_parts) > 2 else ""
     
     def _build_messages(self, prompt: str, memory_context: str) -> List[Dict]:
         """
@@ -469,7 +566,14 @@ class FreeAgent:
         # Detect if user wants ONLY to read/show a file (no analysis needed)
         # If the prompt also asks to "fix", "analyze", "why", "bug", we let it pass to the AI
         simple_read_only = any(word in prompt.lower() for word in ["show me ", "check line", "what is on line", "line "])
-        has_analysis_request = any(word in prompt.lower() for word in ["fix", "analyze", "why", "bug", "error", "tell me why", "explain"])
+        # Keep in sync with _get_multi_file_context trigger_words so any prompt
+        # that would inject file context is also protected from interceptor early-return
+        has_analysis_request = any(word in prompt.lower() for word in [
+            "fix", "analyze", "analyse", "why", "how", "bug", "error",
+            "tell me why", "explain", "understand", "caveman", "token",
+            "compress", "mode", "routing", "router", "memory", "stream",
+            "reasoning", "context", "not saving", "isn't", "doesn't",
+        ])
         
         if simple_read_only and not has_analysis_request:
             # Extract filename
