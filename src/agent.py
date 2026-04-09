@@ -656,9 +656,20 @@ class FreeAgent:
                 # If has_analysis_request is True, we skip the return above 
                 # and let the code continue to _build_messages below.
         # ──────────────────────────────────────────────────────────────────────
-        
+
         memory_context = self._get_memory_context(prompt)
         messages = self._build_messages(prompt, memory_context)
+
+        # ── TEMPORARY DEBUG: shows context injection in chat UI ───────────────
+        # Remove this block once you've confirmed tokens jump to 2500+
+        _dbg_ctx = self._get_multi_file_context(prompt)
+        if _dbg_ctx:
+            _dbg_tokens = self._count_tokens(_dbg_ctx)
+            yield f"> 🔍 **Debug:** Injected `{len(_dbg_ctx)}` chars / `{_dbg_tokens}` tokens of project context.\n\n"
+        else:
+            yield f"> 🔍 **Debug:** No file context injected (trigger words didn't match).\n\n"
+        # ─────────────────────────────────────────────────────────────────────
+
         model, provider = self.router.select_model(prompt, self.available_models)
         model_label = self.router.get_complexity_label(prompt)
 
