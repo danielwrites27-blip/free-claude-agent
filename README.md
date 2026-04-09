@@ -1,115 +1,119 @@
 # 🆓 Free Claude Agent
 
-A 100% free, token-optimized AI agent with **4 distinct personalities**, self-debugging capabilities, and automatic multi-provider fallback. No credit card, no GPU, no monthly fees.
+> **A 100% free, self-hosted AI agent that can read, analyze, and fix its own source code.**  
+> Multi-provider (Groq/SambaNova/Cerebras) • Token-optimized • SQLite Memory • Self-Editing
 
-## ✨ New Features (v2.0)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Powered by Groq](https://img.shields.io/badge/Powered%20by-Groq-black?logo=groq)](https://groq.com)
 
-- **🎭 4 Operating Modes**: Switch between Caveman, Deep Reasoning, Normal, and Priority modes instantly
-- **📂 Self-Debugging**: Agent can read its own source code (`app.py`, `src/agent.py`) to fix errors
-- **🌐 Live URL Checking**: Fetches and summarizes web pages in real-time
-- **🧠 Deep Reasoning**: Step-by-step chain-of-thought for complex coding & math
-- **🦕 Caveman Mode**: Strips filler words for ~75% token savings
-- **💾 Smart Memory**: SQLite persistence with BM25 recall across sessions
-- **🔄 Auto-Failover**: Groq → Sambanova → Cerebras (never goes down)
+## ✨ Key Features
 
----
+### 🧠 Self-Aware Debugging
+Unlike standard chatbots, this agent can **read its own source code** to answer questions about its behavior.
+- **Multi-File Context:** Automatically injects relevant code snippets (`app.py`, `src/agent.py`, `src/caveman.py`) when you ask "Why isn't X working?" or "Fix the bug in...".
+- **Evidence-Based Answers:** Instead of generic advice, it references specific lines, variables, and function logic from your actual codebase.
+- **Smart Triggers:** Detects analysis keywords ("why", "how", "bug", "broken") to switch from chat mode to debug mode.
 
-## 🎭 The 4 Modes
+### 🛠️ Safe Self-Editing
+The agent can modify its own files to apply fixes instantly.
+- **Syntax Validation:** Uses Python's `compile()` to verify code correctness *before* saving. Broken code is automatically rejected.
+- **Automatic Backups:** Creates a `.bak` file before every edit.
+- **Security:** Prevents directory traversal and restricts edits to safe extensions (`.py`, `.json`, `.md`).
 
-| Mode | Caveman | Deep Reasoning | Personality | Best For |
-|------|---------|----------------|-------------|----------|
-| **🦕 Caveman** | ✅ ON | ❌ OFF | "Ugga see error. Fix line 10." | Quick facts, saving tokens |
-| **🧠 Deep Reasoning** | ❌ OFF | ✅ ON | "Let's analyze step-by-step..." | Complex coding, math, learning |
-| **⚖️ Normal** | ❌ OFF | ❌ OFF | "Sure! I can help with that..." | Casual chat, general questions |
-| **🚀 Deep Priority** | ✅ ON | ✅ ON | Same as Deep Reasoning | When you want max intelligence |
+### 🦕 Caveman Mode (Token Saver)
+Strip filler words ("Sure!", "I think", "Additionally") to save **~75% on output tokens**.
+- Perfect for high-volume usage on free tiers.
+- Preserves code blocks and technical accuracy.
 
-> **Note:** If both boxes are checked, **Deep Reasoning wins** (intelligence > brevity).
+### 🚀 Multi-Provider Fallback
+Never go down. Automatically routes requests based on complexity and availability:
+1.  **Groq** (Primary - Fastest)
+2.  **SambaNova** (Secondary - High Quota)
+3.  **Cerebras** (Tertiary - Backup)
+
+### 💾 Persistent Memory
+- **Short-Term:** Keeps last 12 conversation turns in live context.
+- **Long-Term:** Summarizes old turns and stores them in **SQLite** (`agent_memory.db`) for retrieval across sessions.
 
 ---
 
 ## 🚀 Quick Start
 
-### Self-host with Docker
-
+### 1. Clone & Install
 ```bash
-# 1. Clone repo
-git clone https://github.com/danielwrites27-blip/free-claude-agent 
+git clone https://github.com/YOUR_USERNAME/free-claude-agent.git
 cd free-claude-agent
+pip install -r requirements.txt
 
-# 2. Get free API keys
-# Groq:       https://console.groq.com/keys 
-# Cerebras:   https://cloud.cerebras.ai 
-# SambaNova:  https://cloud.sambanova.ai 
+2. Configure Environment
+Create a .env file in the root directory:
+# Required: Get free key at https://console.groq.com
+GROQ_API_KEY=gsk_...
 
-# 3. Configure environment
-cp .env.example .env
-# Edit .env: add your API keys
+# Optional: Extend limits with free keys from SambaNova/Cerebras
+SAMBANOVA_API_KEY=...
+CEREBRAS_API_KEY=...
 
-# 4. Run
-docker build -t free-agent .
-docker run -p 7860:7860 --env-file .env free-agent
-Then open http://localhost:7860
-
-🔑 API Keys (all free)
-Provider                Free Limit                Get Key
-Groq                    1,000 req/day (70B)       -
-Cerebras                1M tokens/day             -
-SambaNova               $5 free credit            -
-
-💡 Usage Examples
-1. Debug Your Own Code
-User: "I have an error in app.py. Please read the file and tell me what's wrong on line 90."
-Agent: Reads file automatically → "✅ Found app.py. Line 90 has a missing colon after the if statement."
-2. Check Live Websites
-User: "Check https://www.python.org and summarize the main news."
-Agent: Fetches URL → "Ugga see Python site. News about Python 3.12 release, security updates."
-3. Complex Coding Task (Deep Mode)
-User: (Enables Deep Reasoning) "Write a secure authentication system with JWT and refresh tokens."
-Agent: Thinks step-by-step → Provides full architecture, code, security notes, and edge cases.
-4. Quick Question (Caveman Mode)
-User: (Enables Caveman) "How to fix React re-render bug?"
-Agent: "Inline object prop = new ref = re-render. Wrap in useMemo."
-
-🏗️ Architecture
-app.py              → Gradio UI + Mode Toggles
-src/agent.py        → Core agent + File Read
-
-📦 Stack
-Python 3.11
-Gradio 4.40+ (with custom toggles)
-Groq SDK (Primary provider)
-OpenAI SDK (For Cerebras + SambaNova compatibility)
-SQLite FTS5 (Full-text search memory)
-BeautifulSoup4 (URL content extraction)
-Docker (Containerized deployment)
-
-🔧 Advanced Configuration
-Environment Variables (.env)
-GROQ_API_KEY=your_key_here
-SAMBANOVA_API_KEY=optional_key
-CEREBRAS_API_KEY=optional_key
+# Optional: Limits
 DAILY_TOKEN_LIMIT=50000
 MEMORY_PATH=agent_memory.db
-CAVEMAN_MODE=true       # Default mode
-HF_AUTH_USERNAME=opt    # For HuggingFace Spaces auth
-HF_AUTH_PASSWORD=opt
 
-Customizing Modes
-Edit src/agent.py → _build_messages() to change system prompts for each mode.
+3. Run Locally
+python app.py
+Open http://localhost:7860 in your browser.
 
-🛠️ Troubleshooting
-"File not found" error:
-Ensure files are committed to Git and included in Docker build
-Check pod logs for exact path calculation
-"All providers failed":
-Verify API keys in .env
-Check rate limits on provider dashboards
-Agent gives generic answers:
-Enable Deep Reasoning for complex tasks
-Disable Caveman Mode for full English responses
+4. Deploy to Cloud (ClawCloud / HuggingFace)
+The project includes a Dockerfile for easy deployment.
+docker build -t free-agent .
+docker run -p 7860:7860 --env-file .env free-agent
+
+💡 Usage Examples
+1. Debugging Self
+User: "Why is caveman mode not saving tokens?"
+Agent: "I see in src/caveman.py line 15 that your fillers list only has 12 patterns. It misses common words like 'actually'. Also, line 42 skips articles inside code blocks..."
+2. Reading Code
+User: "Show me line 100 of app.py"
+Agent: (Instantly displays lines 95-105 with line 100 highlighted, no API call used)
+3. Editing Code
+User: "Edit src/caveman.py to add 'basically' to the fillers list."
+Agent: (Validates syntax, creates backup, applies fix)
+"✅ Successfully updated src/caveman.py. Backup saved. Syntax validation passed."
+4. Complex Reasoning
+User: "Compare PostgreSQL vs MongoDB for a chat app" (Enable Deep Reasoning toggle)
+Agent: (Uses 70B model, step-by-step analysis, structured output)
+
+🎛️ Modes
+Mode                    Description                                        Best For
+🦕 Caveman              Strips filler words/articles                       Saving tokens, fast answers
+🧠 Deep Reasoning       Forces step-by-step Chain-of-Thought     	       Coding, Math, Logic puzzles
+⚖️ Normal               Balanced helpful assistant                         General chat
+🔒 Priority Logic       Deep Reasoning overrides Caveman if both checked   Complex tasks requiring precision
+
+🏗️ Architecture
+
+free-claude-agent/
+├── app.py              # Gradio UI & Singleton Agent Manager
+├── src/
+│   ├── agent.py        # Core Logic, Interceptors, Multi-File Context
+│   ├── caveman.py      # Token Compression Logic
+│   ├── memory.py       # SQLite Long-Term Memory
+│   └── router.py       # Smart Model Selection (8B vs 70B)
+├── agent_memory.db     # Persistent SQLite Database
+└── requirements.txt    # Dependencies
+
+How Self-Debugging Works
+Intercept: User asks "Why is X broken?".
+Trigger: _get_multi_file_context detects keywords ("broken", "why").
+Extract: Agent reads relevant files (src/agent.py, src/caveman.py).
+Inject: Code snippets are injected into the system prompt.
+Analyze: LLM receives real code + question → generates specific fix.
 
 📄 License
-MIT License - Free for personal and commercial use.
+MIT License - feel free to fork and modify!
 🙏 Credits
-Built with ❤️ by Daniel Writes
-Powered by Groq, Cerebras, and SambaNova free tiers.
+Built with:
+Groq for blazing fast inference.
+Gradio for the UI.
+SambaNova & Cerebras for fallback capacity.
+
+
