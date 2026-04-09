@@ -356,7 +356,15 @@ class FreeAgent:
 
         print(f"[MultiFileContext] Files to read: {list(files_to_read.keys())}", flush=True)
 
-        context_parts = ["--- PROJECT CONTEXT (AUTO-INJECTED) ---"]
+        context_parts = [
+            "--- ACTUAL PROJECT SOURCE CODE ---\n"
+            "The code below is the real, current source. You MUST:\n"
+            "- Reference specific function names, variable names, and exact values you can see (e.g. 'your fillers list has 12 patterns')\n"
+            "- Quote specific lines when relevant (e.g. 'line X does Y')\n"
+            "- Never give generic advice that ignores what is actually written here\n"
+            "- If the code already handles something the user thinks is broken, say so explicitly\n"
+            "---"
+        ]
         total_chars = 0
 
         for filepath, func_name in files_to_read.items():
