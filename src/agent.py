@@ -384,12 +384,14 @@ class FreeAgent:
                     content = self._extract_function(raw, func_name)
                     label = f"{filepath} → {func_name}()"
                 else:
-                    # Whole file — 3000 chars gives ~750 tokens, 2× the old limit
+                    # Whole file — 6000 chars gives ~750 tokens, 2× the old limit
                     # and actually reaches the functions that matter
-                    MAX_CHARS = 3000
-                    content = raw if len(raw) <= MAX_CHARS else (
-                        raw[:MAX_CHARS] + "\n... [truncated — ask to read specific lines]"
-                    )
+                    MAX_CHARS = 6000
+                    # Small files: read whole. Large files: truncate with note.
+                    if len(raw) <= MAX_CHARS:
+                        content = raw
+                    else:
+                        content = raw[:MAX_CHARS] + f"\n... [truncated at {MAX_CHARS} chars — ask to read specific lines or functions]"
                     label = filepath
 
                 context_parts.append(f"\n### {label}\n```python\n{content}\n```")
