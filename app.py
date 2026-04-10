@@ -1,185 +1,246 @@
-"""
-Gradio interface for Free Claude Agent with Caveman & Deep Reasoning Toggles.
-Run locally:   python app.py
-Deploy:        GitHub Actions auto-pushes to HF Spaces / claw.cloud pod
-"""
-import os
 import gradio as gr
+import os
 from src.agent import FreeAgent
 
-# -- Agent singleton (lazy-loaded on first request) ----------------------------
-_agent: FreeAgent | None = None
-_current_caveman_mode: bool = True
-_current_deep_mode: bool = False
+# ─── Agent factory (singleton per session) ────────────────────────────────────
+_agent_instance = None
 
-def get_agent(caveman_mode: bool = True, deep_reasoning_mode: bool = False) -> FreeAgent:
-    """
-    Returns the agent instance. 
-    Recreates the agent if either mode setting changes.
-    """
-    global _agent, _current_caveman_mode, _current_deep_mode
-    
-    # Initialize or recreate agent if modes changed
-    if (_agent is None or 
-        caveman_mode != _current_caveman_mode or 
-        deep_reasoning_mode != _current_deep_mode):
-        
-        _current_caveman_mode = caveman_mode
-        _current_deep_mode = deep_reasoning_mode
-        
-        _agent = FreeAgent(
-            api_key=os.getenv("GROQ_API_KEY"),
+def get_agent():
+    global _agent_instance
+    if _agent_instance is None:
+        _agent_instance = FreeAgent(
+            groq_api_key=os.getenv("GROQ_API_KEY"),
+            sambanova_api_key=os.getenv("SAMBANOVA_API_KEY"),
+            cerebras_api_key=os.getenv("CEREBRAS_API_KEY"),
+            tavily_api_key=os.getenv("TAVILY_API_KEY"),
             daily_token_limit=int(os.getenv("DAILY_TOKEN_LIMIT", "50000")),
             memory_path=os.getenv("MEMORY_PATH", "agent_memory.db"),
-            caveman_mode=caveman_mode,
-            deep_reasoning_mode=deep_reasoning_mode,
         )
-    return _agent
+    return _agent_instance
 
 
-# -- Chat handler (streaming) --------------------------------------------------
-def chat_stream(message: str, history: list, caveman_toggle: bool, deep_toggle: bool):
+def show_usage():
+    agent = get_agent()
+    used = agent.tokens_used_today
+    limit = agent.daily_token_limit
+    pct = min(int((used / limit) * 100), 100) if limit else 0
+    color = "#4ade80" if pct < 70 else "#facc15" if pct < 90 else "#f87171"
+    return f"""
+    <div style="font-family:monospace;font-size:12px;color:#aaa;padding:4px 0;">
+      <span style="color:#888;">Tokens today:</span>
+      <span style="color:{color};font-weight:bold;">{used:,} / {limit:,}</span>
+      <span style="color:#555;margin-left:8px;">({pct}%)</span>
+      <div style="background:#333;border-radius:4px;height:6px;margin-top:4px;width:100%;">
+        <div style="background:{color};border-radius:4px;height:6px;width:{pct}%;transition:width 0.3s;"></div>
+      </div>
+    </div>
     """
-    Gradio streaming chat handler.
-    Ensures Caveman and Deep Reasoning are mutually exclusive.
-    """
-    # Logic: If Deep is ON, Caveman must be OFF.
-    # If Caveman is ON, Deep must be OFF.
-    # If both are OFF, it's Normal mode.
-    if deep_toggle and caveman_toggle:
-        # Prioritize Deep Reasoning if user somehow checks both
-        final_caveman = False
-        final_deep = True
-    else:
-        final_caveman = caveman_toggle
-        final_deep = deep_toggle
-
-    agent = get_agent(caveman_mode=final_caveman, deep_reasoning_mode=final_deep)
-    
-    partial = ""
-    try:
-        for chunk in agent.ask_stream(message):
-            partial += chunk
-            yield partial
-    except Exception as e:
-        yield f"?? Error: {str(e)[:300]}"
 
 
-# -- Usage stats ---------------------------------------------------------------
-def show_usage() -> str:
-    usage = get_agent().get_usage()
-    providers = ", ".join(usage["providers_active"])
-    return (
-        f"**?? Token Usage**\n\n"
-        f"- Used today: `{usage['tokens_used_today']:,}` / `{usage['daily_limit']:,}`\n"
-        f"- Remaining: `{usage['remaining']:,}`\n"
-        f"- Resets in: ~`{usage['reset_in_hours']}h`\n"
-        f"- Active providers: `{providers}`\n"
-        f"- Conversation turns: `{usage['history_turns']}`"
-    )
+# ─── Main chat handler ─────────────────────────────────────────────────────────
+def chat_stream(message, history, mode):
+    agent = get_agent()
+    caveman_mode = (mode == "Caveman")
+    deep_reasoning = (mode == "Deep Reasoning")
+
+    agent.caveman_mode = caveman_mode
+    agent.deep_reasoning_mode = deep_reasoning
+
+    full_response = ""
+    for chunk in agent.ask_stream(message):
+        full_response += chunk
+        yield full_response
 
 
-# -- Clear history -------------------------------------------------------------
+def get_status():
+    agent = get_agent()
+    model_label = getattr(agent, "_last_model_label", "⚡ ready")
+    provider = getattr(agent, "_last_provider", "")
+    label = f"`{model_label}`" + (f" · {provider}" if provider else "")
+    return f"**Status:** {label}"
+
+
 def clear_history():
-    get_agent().clear_history()
-    return [], "? Conversation history cleared (long-term memory kept)."
+    agent = get_agent()
+    agent.conversation_history = []
+    return [], show_usage()
 
 
-# -- Gradio UI -----------------------------------------------------------------
-with gr.Blocks(title="?? Free Claude Agent", theme=gr.themes.Soft()) as demo:
+# ─── Custom CSS ───────────────────────────────────────────────────────────────
+css = """
+/* Dark base */
+body, .gradio-container {
+    background: #0f1117 !important;
+    color: #e2e8f0 !important;
+}
+.gradio-container {
+    max-width: 860px !important;
+    margin: 0 auto !important;
+}
 
-    gr.Markdown("""
-# ?? Free Claude Agent
-*Multi-provider • Token-optimized • Real conversation memory • 100% free*
+/* Chat bubbles */
+.message.user {
+    background: #1e2235 !important;
+    border: 1px solid #2d3554 !important;
+    border-radius: 12px !important;
+    color: #e2e8f0 !important;
+}
+.message.bot {
+    background: #161b2e !important;
+    border: 1px solid #1e2a45 !important;
+    border-radius: 12px !important;
+    color: #e2e8f0 !important;
+}
 
-> **Providers active:** Groq · Sambanova · Cerebras (whichever keys are set)  
-> **Smart routing:** Simple queries ? fast 8B model · Complex queries ? 70B model
-    """)
+/* Input box */
+.gr-textbox textarea {
+    background: #1a1f2e !important;
+    color: #e2e8f0 !important;
+    border: 1px solid #2d3554 !important;
+    border-radius: 8px !important;
+}
 
-    # Mode Toggles
-    with gr.Row():
-        caveman_toggle = gr.Checkbox(
-            label="?? Caveman Mode (Save Tokens)", 
-            value=True, 
-            info="Strips filler words ? ~75% token savings"
+/* Radio buttons */
+.gr-radio label {
+    color: #94a3b8 !important;
+}
+.gr-radio label:hover {
+    color: #e2e8f0 !important;
+}
+
+/* Buttons */
+button.primary {
+    background: #3b5bdb !important;
+    border: none !important;
+    border-radius: 8px !important;
+    color: white !important;
+}
+button.secondary {
+    background: #1e2235 !important;
+    border: 1px solid #2d3554 !important;
+    border-radius: 8px !important;
+    color: #94a3b8 !important;
+}
+button.secondary:hover {
+    border-color: #4a5568 !important;
+    color: #e2e8f0 !important;
+}
+
+/* Header */
+.header-row {
+    border-bottom: 1px solid #1e2235;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+}
+
+/* Status bar */
+.status-label {
+    font-family: monospace;
+    font-size: 12px;
+    color: #64748b;
+    padding: 2px 0;
+}
+
+/* Markdown */
+.gr-markdown p, .gr-markdown h1, .gr-markdown h2, .gr-markdown h3 {
+    color: #e2e8f0 !important;
+}
+code {
+    background: #1e2235 !important;
+    color: #7dd3fc !important;
+    padding: 2px 5px !important;
+    border-radius: 4px !important;
+}
+"""
+
+
+# ─── UI Layout ────────────────────────────────────────────────────────────────
+with gr.Blocks(
+    theme=gr.themes.Base(
+        primary_hue="blue",
+        neutral_hue="slate",
+        font=gr.themes.GoogleFont("Inter"),
+    ),
+    css=css,
+    title="Free Claude Agent 🤖",
+) as demo:
+
+    # Header
+    with gr.Row(elem_classes="header-row"):
+        gr.Markdown("## 🤖 Free Claude Agent")
+        gr.Markdown(
+            "<span style='color:#4a5568;font-size:13px;'>Multi-provider · Zero cost · Self-aware</span>",
+            elem_classes="status-label"
         )
-        deep_toggle = gr.Checkbox(
-            label="?? Deep Reasoning (Slow/Smart)", 
-            value=False, 
-            info="Step-by-step analysis for complex problems"
-        )
 
-    # Main chat
-    chatbot = gr.ChatInterface(
-        fn=chat_stream,
-        additional_inputs=[caveman_toggle, deep_toggle],
-        title="",
-        examples=[
-            ["How do I fix a React re-render bug?", True, False],
-            ["Explain quantum entanglement simply", True, False],
-            ["Debug this Python error: IndexError", True, False],
-            ["Write a secure auth system in Python", False, True], # Deep mode example
-            ["Compare PostgreSQL vs MongoDB", False, True],       # Deep mode example
-            ["Check https://www.python.org", True, False],
-        ],
-        cache_examples=False,
+    # Chat
+    chatbot = gr.Chatbot(
+        label="",
+        height=500,
+        show_label=False,
+        bubble_full_width=False,
+        render_markdown=True,
     )
+
+    # Input row
+    with gr.Row():
+        msg_box = gr.Textbox(
+            placeholder="Ask anything… (Enter to send, Shift+Enter for newline)",
+            show_label=False,
+            scale=8,
+            container=False,
+        )
+        send_btn = gr.Button("Send", variant="primary", scale=1, min_width=80)
 
     # Controls row
     with gr.Row():
-        clear_btn = gr.Button("??? Clear History", variant="secondary", scale=1)
-        clear_status = gr.Markdown()
+        mode_radio = gr.Radio(
+            choices=["Normal", "Caveman", "Deep Reasoning"],
+            value="Normal",
+            label="Mode",
+            scale=3,
+            interactive=True,
+        )
+        with gr.Column(scale=2):
+            clear_btn = gr.Button("🗑 Clear History", variant="secondary", size="sm")
+            status_md = gr.Markdown("**Status:** `⚡ ready`", elem_classes="status-label")
 
+    # Token usage bar
+    usage_html = gr.HTML(show_usage())
+
+    # ─── Event wiring ─────────────────────────────────────────────────────────
+
+    def respond(message, history, mode):
+        history = history or []
+        history.append([message, ""])
+        full = ""
+        for chunk in chat_stream(message, history[:-1], mode):
+            full = chunk
+            history[-1][1] = full
+            yield "", history, get_status(), show_usage()
+
+    msg_box.submit(
+        respond,
+        inputs=[msg_box, chatbot, mode_radio],
+        outputs=[msg_box, chatbot, status_md, usage_html],
+    )
+    send_btn.click(
+        respond,
+        inputs=[msg_box, chatbot, mode_radio],
+        outputs=[msg_box, chatbot, status_md, usage_html],
+    )
     clear_btn.click(
-        fn=clear_history,
-        outputs=[chatbot.chatbot, clear_status]
+        clear_history,
+        outputs=[chatbot, usage_html],
     )
 
-    # Usage accordion
-    with gr.Accordion("?? Usage Stats", open=False):
-        usage_btn = gr.Button("?? Refresh Stats")
-        usage_display = gr.Markdown()
-        usage_btn.click(fn=show_usage, outputs=usage_display)
 
-    gr.Markdown("""
----
-### ?? How it works
-| Feature | Detail |
-|---|---|
-| **?? Caveman mode** | Strips filler words ? ~75% token savings |
-| **?? Deep Reasoning** | Step-by-step analysis for coding/math/logic |
-| **? Smart routing** | 8B for simple · 70B for reasoning/code |
-| **?? Memory** | Last 12 turns live + SQLite long-term |
-| **?? Fallback** | Groq ? Sambanova ? Cerebras (auto) |
+# ─── Auth & launch ────────────────────────────────────────────────────────────
+auth_user = os.getenv("HF_AUTH_USERNAME")
+auth_pass = os.getenv("HF_AUTH_PASSWORD")
 
-### ?? Self-host
-```bash
-git clone https://github.com/danielwrites27-blip/free-claude-agent  
-cd free-claude-agent
-cp .env.example .env
-docker build -t agent .
-docker run -p 7860:7860 --env-file .env agent
-""")
-# -- Launch --------------------------------------------------------------------
-if __name__ == "__main__":
-    auth = None
-    hf_user = os.getenv("HF_AUTH_USERNAME")
-    hf_pass = os.getenv("HF_AUTH_PASSWORD")
-    
-    # These lines MUST be indented
-    if hf_user and hf_pass:
-        auth = (hf_user, hf_pass)
+launch_kwargs = dict(server_name="0.0.0.0", server_port=7860, show_error=True)
+if auth_user and auth_pass:
+    launch_kwargs["auth"] = (auth_user, auth_pass)
 
-    demo.launch(
-        server_name="0.0.0.0",
-        server_port=int(os.getenv("PORT", "7860")),
-        share=True,
-        auth=auth,
-        show_api=False,
-        root_path="",
-        app_kwargs={
-            "docs_url": None,
-            "redoc_url": None,
-            "openapi_url": None
-        }
-    )
+demo.launch(**launch_kwargs)
