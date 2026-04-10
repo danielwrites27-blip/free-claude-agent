@@ -739,7 +739,6 @@ class FreeAgent:
                 # If has_analysis_request is True, we skip the return above 
                 # and let the code continue to _build_messages below.
         # ──────────────────────────────────────────────────────────────────────
-
         memory_context = self._get_memory_context(prompt)
         search_triggers = ["search for", "look up", "find me", "what is the latest",
                            "latest", "current", "news about", "who is", "what happened",
@@ -748,6 +747,25 @@ class FreeAgent:
             search_context = self.tavily_search(prompt)
             if search_context:
                 memory_context = f"{search_context}\n\n{memory_context}".strip()
+
+        # ── SVG GENERATION INTERCEPTOR ────────────────────────────────────
+        svg_triggers = [
+            "draw", "create svg", "generate svg", "make svg", "svg of",
+            "illustrate", "sketch", "design a", "draw me", "make me a drawing",
+            "create an image", "generate an image", "create a diagram",
+            "make a diagram", "create a logo", "design a logo",
+        ]
+        if any(t in prompt.lower() for t in svg_triggers):
+            yield "🎨 Generating SVG illustration...\n\n"
+            svg_result = self.generate_svg(prompt)
+            if svg_result:
+                yield f"```svg\n{svg_result}\n```"
+                yield f"\n\n`🎨 SVG · Gemini`"
+            else:
+                yield "⚠️ SVG generation failed across all providers."
+            return
+        # ─────────────────────────────────────────────────────────────────
+
         messages = self._build_messages(prompt, memory_context)
 
         model, provider = self.router.select_model(prompt, self.available_models, force_reasoning=self.deep_reasoning_mode)
