@@ -305,6 +305,80 @@ class FreeAgent:
         except Exception as e:
             print(f"[Tavily] Search failed: {e}", flush=True)
             return ""
+
+    def generate_svg(self, prompt: str) -> str:
+        """
+        Dedicated SVG generation using best available provider.
+        Fallback chain: Gemini 3.1 Flash-Lite → SambaNova Qwen3-235B →
+                        Cerebras Qwen3-235B → Groq Llama 70B
+        """
+        svg_system = (
+            "You are an expert SVG artist. Generate clean, valid, self-contained SVG code. "
+            "RULES: "
+            "1. Output ONLY the raw SVG — starting with <svg and ending with </svg>. "
+            "2. No markdown, no code fences, no explanation, no preamble. "
+            "3. Use viewBox='0 0 500 500' unless the content needs a different ratio. "
+            "4. All styles must be inline — no external CSS or fonts. "
+            "5. Make it visually rich, detailed, and accurate to the prompt."
+        )
+        svg_messages = [
+            {"role": "system", "content": svg_system},
+            {"role": "user", "content": f"Create an SVG illustration of: {prompt}"}
+        ]
+
+        providers_to_try = []
+
+        # Primary: Gemini 3.1 Flash-Lite Preview
+        if self.gemini_client:
+            providers_to_try.append((
+                self.gemini_client,
+                "gemini-3.1-flash-lite-preview",
+                "Gemini"
+            ))
+
+        # Fallback 1: SambaNova Qwen3-235B
+        if self.sambanova_client:
+            providers_to_try.append((
+                self.sambanova_client,
+                "Qwen3-235B-A22B-Instruct-2507",
+                "SambaNova"
+            ))
+
+        # Fallback 2: Cerebras Qwen3-235B
+        if self.cerebras_client:
+            providers_to_try.append((
+                self.cerebras_client,
+                "qwen3-235b-a22b",
+                "Cerebras"
+            ))
+
+        # Last resort: Groq Llama 70B
+        providers_to_try.append((
+            self.groq_client,
+            "llama-3.3-70b-versatile",
+            "Groq"
+        ))
+
+        for client, model, provider_name in providers_to_try:
+            try:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=svg_messages,
+                    max_tokens=4096,
+                    temperature=0.7,
+                )
+                result = response.choices[0].message.content.strip()
+                if "<svg" in result and "</svg>" in result:
+                    start = result.index("<svg")
+                    end = result.index("</svg>") + len("</svg>")
+                    svg_clean = result[start:end]
+                    print(f"[SVG] Generated via {provider_name}/{model}", flush=True)
+                    return svg_clean
+            except Exception as e:
+                print(f"[SVG] {provider_name} failed: {e}", flush=True)
+                continue
+
+        return ""
     
     def _extract_function(self, source: str, func_name: str) -> str:
         """Extract a specific function/method from Python source by name.
