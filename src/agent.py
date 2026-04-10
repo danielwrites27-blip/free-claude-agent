@@ -76,7 +76,33 @@ class FreeAgent:
                     )
                 except ImportError:
                     pass
-# Tavily (web search)
+# Gemini (SVG primary — via OpenAI-compatible endpoint)
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        self.gemini_client = None
+        if gemini_key:
+            try:
+                from openai import OpenAI
+                self.gemini_client = OpenAI(
+                    api_key=gemini_key,
+                    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+                )
+            except ImportError:
+                pass
+
+        # OpenRouter (SVG fallback — Qwen3.5 free tier)
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        self.openrouter_client = None
+        if openrouter_key:
+            try:
+                from openai import OpenAI
+                self.openrouter_client = OpenAI(
+                    api_key=openrouter_key,
+                    base_url="https://openrouter.ai/api/v1"
+                )
+            except ImportError:
+                pass
+
+        # Tavily (web search)
         self.tavily_key = os.getenv("TAVILY_API_KEY")
         
         # ── Budget tracking ───────────────────────────────────────────────
