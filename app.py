@@ -5,6 +5,28 @@ from src.agent import FreeAgent
 # ─── Agent factory (singleton per session) ────────────────────────────────────
 _agent_instance = None
 
+import pathlib
+
+def extract_file_text(filepath: str) -> str:
+    """Extract plain text from .txt, .md, .pdf, or .docx files."""
+    ext = pathlib.Path(filepath).suffix.lower()
+    try:
+        if ext in (".txt", ".md"):
+            with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+                return f.read()
+        elif ext == ".pdf":
+            import fitz  # pymupdf
+            doc = fitz.open(filepath)
+            return "\n\n".join(page.get_text() for page in doc)
+        elif ext == ".docx":
+            from docx import Document
+            doc = Document(filepath)
+            return "\n\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        else:
+            return f"[Unsupported file type: {ext}]"
+    except Exception as e:
+        return f"[Error reading file: {e}]"
+
 def get_agent():
     global _agent_instance
     if _agent_instance is None:
@@ -179,6 +201,14 @@ with gr.Blocks(
         render_markdown=True,
     )
 
+    # File upload
+    file_upload = gr.File(
+        label="📎 Attach file (.txt, .md, .pdf, .docx)",
+        file_types=[".txt", ".md", ".pdf", ".docx"],
+        scale=1,
+        height=80,
+    )
+
     # Input row
     with gr.Row():
         msg_box = gr.Textbox(
@@ -207,24 +237,35 @@ with gr.Blocks(
 
     # ─── Event wiring ─────────────────────────────────────────────────────────
 
-    def respond(message, history, mode):
+    def respond(message, history, mode, uploaded_file):
         history = history or []
-        history.append([message, ""])
+        # Inject file content if a file is attached
+        if uploaded_file is not None:
+            file_text = extract_file_text(uploaded_file.name)
+            filename = pathlib.Path(uploaded_file.name).name
+            augmented_prompt = (
+                f"[Uploaded file: {filename}]\n\n"
+                f"{file_text}\n\n"
+                f"---\nUser question: {message}"
+            )
+        else:
+            augmented_prompt = message
+        history.append([message, ""])  # show original message in chat, not the augmented one
         full = ""
-        for chunk in chat_stream(message, history[:-1], mode):
+        for chunk in chat_stream(augmented_prompt, history[:-1], mode):
             full = chunk
             history[-1][1] = full
-            yield "", history, get_status(), show_usage()
+            yield "", history, get_status(), show_usage(), None  # None clears the file upload
 
     msg_box.submit(
         respond,
-        inputs=[msg_box, chatbot, mode_radio],
-        outputs=[msg_box, chatbot, status_md, usage_html],
+        inputs=[msg_box, chatbot, mode_radio, file_upload],
+        outputs=[msg_box, chatbot, status_md, usage_html, file_upload],
     )
     send_btn.click(
         respond,
-        inputs=[msg_box, chatbot, mode_radio],
-        outputs=[msg_box, chatbot, status_md, usage_html],
+        inputs=[msg_box, chatbot, mode_radio, file_upload],
+        outputs=[msg_box, chatbot, status_md, usage_html, file_upload],
     )
     clear_btn.click(
         clear_history,
