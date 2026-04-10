@@ -274,7 +274,7 @@ class FreeAgent:
                 return ""
             parts = ["🌐 Web Search Results:"]
             for i, res in enumerate(results, 1):
-                parts.append(f"{i}. {res.get('title','')}\n{res.get('url','')}\n{res.get('content','')[:300]}")
+                parts.append(f"{i}. {res.get('title','')}\n{res.get('url','')}\n{res.get('content','')[:500]}")
             return "\n\n".join(parts)
         except Exception as e:
             print(f"[Tavily] Search failed: {e}", flush=True)
@@ -455,13 +455,15 @@ class FreeAgent:
                 "For every query, you must analyze constraints, edge cases, and logic internally.\n"
                 "Provide clear, structured, and thorough answers. Use Markdown for formatting.\n"
                 "If the user asks for code, explain the logic first, then provide the solution.\n"
-                "Prioritize accuracy and depth over brevity."
+                "Prioritize accuracy and depth over brevity.\n"
+                "When web search results are provided at the start of context, summarize them naturally in your response rather than listing raw URLs."
             )
         else:
             # Normal Mode: Balanced helpful assistant
             system_content = (
                 "You are a helpful, harmless, and honest AI assistant. "
-                "Answer clearly and concisely, but provide detail when needed."
+                "Answer clearly and concisely, but provide detail when needed. "
+                "When web search results are provided at the start of context, summarize them naturally in your response rather than listing raw URLs."
             )
 
         # Initialize messages list ONCE
