@@ -456,14 +456,14 @@ class FreeAgent:
                 "Provide clear, structured, and thorough answers. Use Markdown for formatting.\n"
                 "If the user asks for code, explain the logic first, then provide the solution.\n"
                 "Prioritize accuracy and depth over brevity.\n"
-                "When web search results are provided at the start of context, summarize them naturally in your response rather than listing raw URLs."
+                "When web search results are provided at the start of context, summarize the actual content naturally in your response. Never list URLs or tell the user to visit websites — just answer directly using the information found."
             )
         else:
             # Normal Mode: Balanced helpful assistant
             system_content = (
                 "You are a helpful, harmless, and honest AI assistant. "
                 "Answer clearly and concisely, but provide detail when needed. "
-                "When web search results are provided at the start of context, summarize them naturally in your response rather than listing raw URLs."
+                "When web search results are provided at the start of context, summarize the actual content naturally in your response. Never list URLs or tell the user to visit websites — just answer directly using the information found."
             )
 
         # Initialize messages list ONCE
