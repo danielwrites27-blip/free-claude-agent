@@ -313,13 +313,19 @@ class FreeAgent:
                         Cerebras Qwen3-235B → Groq Llama 70B
         """
         svg_system = (
-            "You are an expert SVG artist. Generate clean, valid, self-contained SVG code. "
-            "RULES: "
-            "1. Output ONLY the raw SVG — starting with <svg and ending with </svg>. "
-            "2. No markdown, no code fences, no explanation, no preamble. "
-            "3. Use viewBox='0 0 500 500' unless the content needs a different ratio. "
-            "4. All styles must be inline — no external CSS or fonts. "
-            "5. Make it visually rich, detailed, and accurate to the prompt."
+            "You are an expert SVG illustrator who creates detailed, artistic SVG illustrations. "
+            "STRICT RULES: "
+            "1. Output ONLY raw SVG code — starting with <svg and ending with </svg>. "
+            "2. No markdown, no code fences, no explanation, no preamble, no comments. "
+            "3. Use viewBox='0 0 800 600' for landscape scenes, '0 0 500 700' for characters. "
+            "4. All styles inline — no external CSS or fonts. "
+            "5. Use <path> elements with bezier curves (C, S, Q commands) for organic shapes — "
+            "NEVER use only basic rectangles, triangles or circles for characters or creatures. "
+            "6. Use gradients (<linearGradient>, <radialGradient>) for depth and realism. "
+            "7. Add details: shadows, highlights, textures using multiple overlapping paths. "
+            "8. Minimum 30 SVG elements for any character or creature illustration. "
+            "9. Dragons must have: scaled body, wings with membrane detail, claws, horns, "
+            "and fire rendered as layered gradient flame paths."
         )
         svg_messages = [
             {"role": "system", "content": svg_system},
@@ -328,20 +334,20 @@ class FreeAgent:
 
         providers_to_try = []
 
-        # Primary: Gemini 3.1 Flash-Lite Preview
-        if self.gemini_client:
-            providers_to_try.append((
-                self.gemini_client,
-                "gemini-3.1-flash-lite-preview",
-                "Gemini"
-            ))
-
-        # Fallback 1: SambaNova Qwen3-235B
+        # Primary: SambaNova Qwen3-235B (largest, best for complex SVG)
         if self.sambanova_client:
             providers_to_try.append((
                 self.sambanova_client,
                 "Qwen3-235B-A22B-Instruct-2507",
                 "SambaNova"
+            ))
+
+        # Secondary: Gemini 3.1 Flash-Lite Preview
+        if self.gemini_client:
+            providers_to_try.append((
+                self.gemini_client,
+                "gemini-3.1-flash-lite-preview",
+                "Gemini"
             ))
 
         # Fallback 2: Cerebras Qwen3-235B
