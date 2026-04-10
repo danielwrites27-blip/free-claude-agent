@@ -9,10 +9,7 @@ def get_agent():
     global _agent_instance
     if _agent_instance is None:
         _agent_instance = FreeAgent(
-            groq_api_key=os.getenv("GROQ_API_KEY"),
-            sambanova_api_key=os.getenv("SAMBANOVA_API_KEY"),
-            cerebras_api_key=os.getenv("CEREBRAS_API_KEY"),
-            tavily_api_key=os.getenv("TAVILY_API_KEY"),
+            api_key=os.getenv("GROQ_API_KEY"),
             daily_token_limit=int(os.getenv("DAILY_TOKEN_LIMIT", "50000")),
             memory_path=os.getenv("MEMORY_PATH", "agent_memory.db"),
         )
