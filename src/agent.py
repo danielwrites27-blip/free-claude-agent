@@ -267,14 +267,14 @@ class FreeAgent:
             r = requests.post("https://api.tavily.com/search", json={
                 "api_key": self.tavily_key,
                 "query": query,
-                "max_results": 3
+                "max_results": 5
             }, timeout=5)
             results = r.json().get("results", [])
             if not results:
                 return ""
             parts = ["🌐 Web Search Results:"]
             for i, res in enumerate(results, 1):
-                parts.append(f"{i}. {res.get('title','')}\n{res.get('url','')}\n{res.get('content','')[:500]}")
+                parts.append(f"{i}. {res.get('title','')}\n{res.get('url','')}\n{res.get('content','')[:900]}")
             return "\n\n".join(parts)
         except Exception as e:
             print(f"[Tavily] Search failed: {e}", flush=True)
