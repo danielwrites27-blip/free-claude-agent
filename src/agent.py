@@ -87,7 +87,7 @@ TOOL_DEFINITIONS = [
                 "properties": {
                     "filepath": {
                         "type": "string",
-                        "description": "Relative path to the file, e.g. src/agent.py"
+                        "description": "Relative path to the file such as src/agent.py or app.py"
                     },
                     "line_number": {
                         "type": "integer",
@@ -111,7 +111,7 @@ TOOL_DEFINITIONS = [
                 "properties": {
                     "url": {
                         "type": "string",
-                        "description": "The full URL to fetch including https://"
+                        "description": "The full URL to fetch, must include the protocol prefix"
                     }
                 },
                 "required": ["url"]
@@ -130,12 +130,14 @@ TOOL_DEFINITIONS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "What to search for in memory"
-                    }
-                },
-                "required": ["query"]
+                    "topic": {
+              "type": "string",
+              "description": "What to search for in memory"
+            }
+          },
+          "required": [
+            "topic"
+          ]
             }
         }
     },
@@ -484,7 +486,7 @@ class FreeAgent:
             return self._tool_fetch_url(tool_args.get("url", ""))
 
         elif tool_name == "recall_memory":
-            return self._tool_recall_memory(tool_args.get("query", ""))
+            return self._tool_recall_memory(tool_args.get("topic", ""))
 
         elif tool_name == "calculate":
             return self._tool_calculate(tool_args.get("expression", ""))
