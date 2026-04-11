@@ -1215,12 +1215,12 @@ class FreeAgent:
         # ── POST-STREAM: code execution feedback loop ─────────────────────
         full_response = re.sub(r'<think>.*?</think>', '', full_response, flags=re.DOTALL).strip()
 
-        code_match = re.search(r'```python\s*(.*?)```', full_response, re.DOTALL)
-        if code_match and any(w in prompt.lower() for w in [
+        code_matches = re.findall(r'```python\s*(.*?)```', full_response, re.DOTALL)
+        if code_matches and any(w in prompt.lower() for w in [
             "write", "create", "build", "code", "script", "function",
             "implement", "calculate", "compute", "solve", "run"
         ]):
-            code = code_match.group(1).strip()
+            code = "\n\n".join(block.strip() for block in code_matches)
             from src.code_runner import SafeCodeRunner
             run_result = SafeCodeRunner.run(code)
 
