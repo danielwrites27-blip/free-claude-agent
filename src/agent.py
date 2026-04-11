@@ -792,13 +792,14 @@ class FreeAgent:
             if delta and delta.content:
                 text = delta.content
                 full_response += text
-                # Suppress <think>...</think> from streaming to UI
                 if "<think>" in text:
                     in_think_block = True
-                if not in_think_block:
-                    yield text
+                    continue
                 if "</think>" in text:
                     in_think_block = False
+                    continue
+                if not in_think_block:
+                    yield text
 
         # Post-stream: compress, store, update history
         # Strip DeepSeek-R1 think tags if present
