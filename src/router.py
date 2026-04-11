@@ -151,11 +151,11 @@ class ModelRouter:
         Prefers Groq 70B → Groq 8B as they have best tool calling support.
         """
         tool_priority = [
+            ("llama-3.1-8b-instant",          GROQ),        # 70B broken on Groq for tool calling
+            ("llama3.1-8b",                   CEREBRAS),
+            ("Meta-Llama-3.3-70B-Instruct",   SAMBANOVA),
             ("llama-3.3-70b-versatile",       GROQ),
             ("llama-3.3-70b",                 CEREBRAS),
-            ("Meta-Llama-3.3-70B-Instruct",   SAMBANOVA),
-            ("llama3.1-8b",                   CEREBRAS),
-            ("llama-3.1-8b-instant",          GROQ),
             ("Meta-Llama-3.1-8B-Instruct",    SAMBANOVA),
         ]
         for model, provider in tool_priority:
