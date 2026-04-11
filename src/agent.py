@@ -606,30 +606,42 @@ class FreeAgent:
         max_output_tokens: int,
     ) -> Generator[str, None, None]:
         """
-        ReAct streaming tool loop.
-        Injects a ReAct system prompt so the model reasons before each action.
-        Tool results are formatted as Observations so the model sees a clean
-        Thought → Action → Observation chain across all rounds.
-        Only the final answer is streamed; tool rounds are non-streaming (fast).
+        Streaming tool loop with rate-limit fallback.
+        Tool rounds are non-streaming (fast). Only final answer is streamed.
         """
         MAX_TOOL_ROUNDS = 5
         current_messages = list(messages)
+        tool_models_to_try = [(model, provider)]
+        if model != "llama-3.1-8b-instant":
+            tool_models_to_try.append(("llama-3.1-8b-instant", GROQ))
 
         for round_num in range(MAX_TOOL_ROUNDS):
-            # Non-streaming call to check for tool use
-            response = self._call_provider(
-                model=model,
-                provider=provider,
-                messages=current_messages,
-                max_tokens=max_output_tokens,
-                stream=False,
-                tools=TOOL_DEFINITIONS,
-                tool_choice="auto",
-            )
+            response = None
+            for try_model, try_provider in tool_models_to_try:
+                try:
+                    response = self._call_provider(
+                        model=try_model,
+                        provider=try_provider,
+                        messages=current_messages,
+                        max_tokens=max_output_tokens,
+                        stream=False,
+                        tools=TOOL_DEFINITIONS,
+                        tool_choice="auto",
+                    )
+                    model, provider = try_model, try_provider
+                    break
+                except Exception as e:
+                    if "429" in str(e) or "rate_limit" in str(e).lower():
+                        continue
+                    raise
+            if response is None:
+                yield "⚠️ All providers rate-limited. Try again later."
+                return
+
             choice = response.choices[0]
             message = choice.message
 
-            # No tool calls — model has reasoned to a final answer, stream it
+            # No tool calls — stream the final answer
             if not message.tool_calls:
                 final_text = message.content or ""
                 words = final_text.split(" ")
@@ -658,7 +670,7 @@ class FreeAgent:
                 ]
             })
 
-            # Execute each tool and append result as an Observation
+            # Execute each tool and append result
             for tc in message.tool_calls:
                 try:
                     args = json.loads(tc.function.arguments)
@@ -667,20 +679,17 @@ class FreeAgent:
 
                 tool_result = self._execute_tool_call(tc.function.name, args)
 
-                # Show code execution results inline
                 if tc.function.name == "run_python":
                     yield f"`{tool_result}`\n\n"
 
-                # Wrap result as Observation so ReAct chain stays coherent
                 observation = f"Observation (round {round_num + 1}, tool={tc.function.name}): {tool_result}"
-
                 current_messages.append({
                     "role": "tool",
                     "tool_call_id": tc.id,
                     "content": observation,
                 })
 
-        # Exhausted MAX_TOOL_ROUNDS — ask for final synthesis
+        # Exhausted MAX_TOOL_ROUNDS — stream final synthesis
         current_messages.append({
             "role": "user",
             "content": (
@@ -688,85 +697,6 @@ class FreeAgent:
                 "Based on all your Observations above, give your final answer now. "
                 "Do not call any more tools."
             )
-        })
-        final_stream = self._call_provider(
-            model=model,
-            provider=provider,
-            messages=current_messages,
-            max_tokens=max_output_tokens,
-            stream=True,
-        )
-        for chunk in final_stream:
-            delta = chunk.choices[0].delta
-            if delta and delta.content:
-                yield delta.content
-            # Non-streaming call to check for tool use first
-            response = self._call_provider(
-                model=model,
-                provider=provider,
-                messages=current_messages,
-                max_tokens=max_output_tokens,
-                stream=False,
-                tools=TOOL_DEFINITIONS,
-                tool_choice="auto",
-            )
-
-            choice = response.choices[0]
-            message = choice.message
-
-            # No tool calls — stream the final answer
-            if not message.tool_calls:
-                final_text = message.content or ""
-                # Stream it word by word for UX consistency
-                words = final_text.split(" ")
-                for i, word in enumerate(words):
-                    yield word + (" " if i < len(words) - 1 else "")
-                return
-
-            # Notify user which tools are being used
-            tool_names = [tc.function.name for tc in message.tool_calls]
-            yield f"\n\n🔧 *Using tools: {', '.join(tool_names)}...*\n\n"
-
-            # Append assistant tool_calls message
-            current_messages.append({
-                "role": "assistant",
-                "content": message.content or "",
-                "tool_calls": [
-                    {
-                        "id": tc.id,
-                        "type": "function",
-                        "function": {
-                            "name": tc.function.name,
-                            "arguments": tc.function.arguments,
-                        }
-                    }
-                    for tc in message.tool_calls
-                ]
-            })
-
-            # Execute tools and append results
-            for tc in message.tool_calls:
-                try:
-                    args = json.loads(tc.function.arguments)
-                except json.JSONDecodeError:
-                    args = {}
-
-                tool_result = self._execute_tool_call(tc.function.name, args)
-
-                # Show tool result to user inline
-                if tc.function.name == "run_python":
-                    yield f"`{tool_result}`\n\n"
-
-                current_messages.append({
-                    "role": "tool",
-                    "tool_call_id": tc.id,
-                    "content": tool_result,
-                })
-
-        # Exhausted rounds — stream final summary
-        current_messages.append({
-            "role": "user",
-            "content": "Please summarize what you found and give your final answer."
         })
         final_stream = self._call_provider(
             model=model,
