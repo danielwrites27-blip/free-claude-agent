@@ -873,7 +873,9 @@ class FreeAgent:
                 "If the user asks for code, explain the logic first, then provide the solution.\n"
                 "Prioritize accuracy and depth over brevity.\n"
                 "When web search results are provided in context, summarize naturally. "
-                "Never list URLs unless explicitly asked."
+                "Never list URLs unless explicitly asked.\n"
+                "Before answering, write your reasoning inside <think></think> tags. "
+                "Break the problem into steps. Check your logic. Then give your final answer."
             )
         else:
             system_content = (
