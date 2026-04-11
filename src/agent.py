@@ -1086,7 +1086,12 @@ class FreeAgent:
         if raw_output is None:
             return f"⚠️ All providers failed. Last error: {getattr(self, '_last_error', 'unknown')[:150]}"
 
-        raw_output = re.sub(r'<think>.*?</think>', '', raw_output, flags=re.DOTALL).strip()
+        think_stripped = re.sub(r'<think>.*?</think>', '', raw_output, flags=re.DOTALL).strip()
+        if think_stripped:
+            raw_output = think_stripped
+        else:
+            think_match = re.search(r'<think>(.*?)</think>', raw_output, re.DOTALL)
+            raw_output = think_match.group(1).strip() if think_match else raw_output
         output = compress_response(raw_output) if self.caveman_mode else raw_output
 
         self._append_to_history(prompt, output)
