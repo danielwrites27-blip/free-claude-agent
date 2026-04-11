@@ -640,6 +640,10 @@ class FreeAgent:
 
                 tool_result = self._execute_tool_call(tc.function.name, args)
 
+                # Show tool result to user inline
+                if tc.function.name == "run_python":
+                    yield f"`{tool_result}`\n\n"
+
                 current_messages.append({
                     "role": "tool",
                     "tool_call_id": tc.id,
