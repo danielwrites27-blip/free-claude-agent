@@ -515,17 +515,34 @@ class FreeAgent:
         """
         MAX_TOOL_ROUNDS = 5
         current_messages = list(messages)
+        # Fallback chain for rate limits — 70B → 8B
+        tool_models_to_try = [(model, provider)]
+        if model != "llama-3.1-8b-instant":
+            tool_models_to_try.append(("llama-3.1-8b-instant", GROQ))
 
         for round_num in range(MAX_TOOL_ROUNDS):
-            response = self._call_provider(
-                model=model,
-                provider=provider,
-                messages=current_messages,
-                max_tokens=max_output_tokens,
-                stream=False,
-                tools=TOOL_DEFINITIONS,
-                tool_choice="auto",
-            )
+            # Non-streaming call to check for tool use — with rate-limit fallback
+            response = None
+            for try_model, try_provider in tool_models_to_try:
+                try:
+                    response = self._call_provider(
+                        model=try_model,
+                        provider=try_provider,
+                        messages=current_messages,
+                        max_tokens=max_output_tokens,
+                        stream=False,
+                        tools=TOOL_DEFINITIONS,
+                        tool_choice="auto",
+                    )
+                    model, provider = try_model, try_provider
+                    break
+                except Exception as e:
+                    if "429" in str(e) or "rate_limit" in str(e).lower():
+                        continue
+                    raise
+            if response is None:
+                yield "⚠️ All providers rate-limited. Try again later."
+                return
 
             choice = response.choices[0]
             message = choice.message
