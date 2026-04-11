@@ -16,6 +16,8 @@ ModelName = Literal[
     # Cerebras (fastest inference, wafer-scale)
     "llama3.1-8b",
     "llama-3.3-70b",
+    # Sambanova reasoning model
+    "DeepSeek-R1-0528",
 ]
 
 # Provider name constants
@@ -93,6 +95,7 @@ class ModelRouter:
                 ("Meta-Llama-3.1-8B-Instruct", SAMBANOVA),
             ],
             "reasoning": [
+                ("DeepSeek-R1-0528", SAMBANOVA),
                 ("llama-3.3-70b-versatile", GROQ),
                 ("Meta-Llama-3.3-70B-Instruct", SAMBANOVA),
                 ("llama-3.3-70b", CEREBRAS),
@@ -101,6 +104,7 @@ class ModelRouter:
                 ("llama-3.1-8b-instant", GROQ),
             ],
             "complex": [
+                ("DeepSeek-R1-0528", SAMBANOVA),
                 ("llama-3.3-70b-versatile", GROQ),
                 ("Meta-Llama-3.3-70B-Instruct", SAMBANOVA),
                 ("llama-3.3-70b", CEREBRAS),
@@ -121,4 +125,4 @@ class ModelRouter:
     def get_complexity_label(self, prompt: str) -> str:
         """Human-readable complexity for UI display"""
         c = self.estimate_complexity(prompt)
-        return {"simple": "⚡ 8B", "reasoning": "🧠 70B", "complex": "🧠 70B"}[c]
+        return {"simple": "⚡ 8B", "reasoning": "🧠 DeepSeek-R1", "complex": "🧠 DeepSeek-R1"}[c]
