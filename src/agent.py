@@ -1025,6 +1025,8 @@ class FreeAgent:
             providers_to_try = [(model, provider)]
             if provider != GROQ:
                 providers_to_try.append(("llama-3.3-70b-versatile", GROQ))
+            providers_to_try.append(("qwen3-235b-a22b", CEREBRAS))
+            providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
             for try_model, try_provider in providers_to_try:
@@ -1059,6 +1061,8 @@ class FreeAgent:
             providers_to_try = [(model, provider)]
             if provider != GROQ:
                 providers_to_try.append(("llama-3.3-70b-versatile", GROQ))
+            providers_to_try.append(("qwen3-235b-a22b", CEREBRAS))
+            providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
             for try_model, try_provider in providers_to_try:
@@ -1181,6 +1185,8 @@ class FreeAgent:
             providers_to_try = [(model, provider)]
             if provider != GROQ:
                 providers_to_try.append(("llama-3.3-70b-versatile", GROQ))
+            providers_to_try.append(("qwen3-235b-a22b", CEREBRAS))
+            providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
             stream_gen = None
@@ -1225,6 +1231,8 @@ class FreeAgent:
             providers_to_try = [(model, provider)]
             if provider != GROQ:
                 providers_to_try.append(("llama-3.3-70b-versatile", GROQ))
+            providers_to_try.append(("qwen3-235b-a22b", CEREBRAS))
+            providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
             stream = None
