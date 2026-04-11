@@ -22,13 +22,13 @@ from .router import ModelRouter, GROQ, SAMBANOVA, CEREBRAS
 MAX_HISTORY_TURNS = 12  # 12 pairs = 24 messages
 
 REACT_SYSTEM_PROMPT = (
-    "You are a ReAct agent. For every step, follow this exact pattern:\n"
-    "Thought: <your reasoning about what to do next and why>\n"
-    "Action: <call exactly one tool>\n\n"
-    "After seeing each Observation (tool result), reason again before your next action.\n"
-    "If a previous step gave you enough information, stop calling tools and give your final answer directly.\n"
-    "If a tool returned an error or unhelpful result, try a different approach — don't repeat the same call.\n"
-    "Never make up tool results. Only use what you actually observed."
+    "You are a reasoning agent with access to tools. For each step:\n"
+    "1. Think about what information you need and why before calling any tool.\n"
+    "2. Call one tool at a time — do not batch unrelated calls.\n"
+    "3. After each tool result, reason about what you learned before deciding the next step.\n"
+    "4. If a tool returned an error or unhelpful result, try a different approach — do not repeat the same call.\n"
+    "5. Stop calling tools as soon as you have enough information to answer fully.\n"
+    "Never fabricate tool results. Only use what you actually received."
 )
 
 # ── Tool definitions for function calling API ─────────────────────────────────
