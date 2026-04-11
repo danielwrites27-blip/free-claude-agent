@@ -1,5 +1,6 @@
 # Core dependencies
 groq==0.9.0
+openai>=1.30.0
 gradio==4.40.0
 gradio_client==1.2.0
 
