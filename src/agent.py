@@ -226,6 +226,7 @@ class FreeAgent:
         if self.sambanova_client:
             self.available_models["Meta-Llama-3.1-8B-Instruct"] = {"provider": SAMBANOVA, "rpd": 10000}
             self.available_models["Meta-Llama-3.3-70B-Instruct"] = {"provider": SAMBANOVA, "rpd": 5000}
+            self.available_models["DeepSeek-R1-0528"] = {"provider": SAMBANOVA, "rpd": 5000}
 
         if self.cerebras_client:
             self.available_models["llama3.1-8b"] = {"provider": CEREBRAS, "rpd": 50000}
@@ -611,9 +612,11 @@ class FreeAgent:
         if raw_output is None:
             return f"⚠️ All providers failed. Last error: {last_error[:150]}"
 
+        # Strip DeepSeek-R1 think tags if present
+        raw_output = re.sub(r'<think>.*?</think>', '', raw_output, flags=re.DOTALL).strip()
+
         # Compress output if caveman mode
         output = compress_response(raw_output) if self.caveman_mode else raw_output
-
         # Update conversation history
         self.conversation_history.append({"role": "user", "content": prompt})
         self.conversation_history.append({"role": "assistant", "content": output})
@@ -781,16 +784,26 @@ class FreeAgent:
             yield "⚠️ All providers failed."
             return
 
-        # Stream chunks
+        # Stream chunks — suppress DeepSeek-R1 <think> tokens from UI
         full_response = ""
+        in_think_block = False
         for chunk in stream:
             delta = chunk.choices[0].delta
             if delta and delta.content:
                 text = delta.content
                 full_response += text
-                yield text
+                # Suppress <think>...</think> from streaming to UI
+                if "<think>" in text:
+                    in_think_block = True
+                if not in_think_block:
+                    yield text
+                if "</think>" in text:
+                    in_think_block = False
 
         # Post-stream: compress, store, update history
+        # Strip DeepSeek-R1 think tags if present
+        full_response = re.sub(r'<think>.*?</think>', '', full_response, flags=re.DOTALL).strip()
+
         if self.caveman_mode:
             full_response = compress_response(full_response)
 
