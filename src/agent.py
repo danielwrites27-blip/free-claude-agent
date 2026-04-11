@@ -1101,7 +1101,7 @@ class FreeAgent:
         return output
 
     # ── PUBLIC API: ask_stream() ──────────────────────────────────────────────
-    def ask_stream(self, prompt: str, max_output_tokens: int = 1024) -> Generator[str, None, None]:
+    def ask_stream(self, prompt: str, max_output_tokens: int = 2048) -> Generator[str, None, None]:
         """
         Streaming entry point.
 
@@ -1259,6 +1259,7 @@ class FreeAgent:
                 return
 
             in_think_block = False
+            think_content = ""
             for chunk in stream:
                 delta = chunk.choices[0].delta
                 if delta and delta.content:
@@ -1270,8 +1271,13 @@ class FreeAgent:
                     if "</think>" in text:
                         in_think_block = False
                         continue
-                    if not in_think_block:
+                    if in_think_block:
+                        think_content += text
+                    else:
                         yield text
+            # If nothing was yielded outside think blocks, show the thinking
+            if not full_response.replace(think_content, "").strip():
+                yield think_content
 
         # ── POST-STREAM: code execution feedback loop ─────────────────────
         think_stripped = re.sub(r'<think>.*?</think>', '', full_response, flags=re.DOTALL).strip()
