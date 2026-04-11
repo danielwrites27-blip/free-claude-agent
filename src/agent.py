@@ -1269,7 +1269,13 @@ class FreeAgent:
                         yield text
 
         # ── POST-STREAM: code execution feedback loop ─────────────────────
-        full_response = re.sub(r'<think>.*?</think>', '', full_response, flags=re.DOTALL).strip()
+        think_stripped = re.sub(r'<think>.*?</think>', '', full_response, flags=re.DOTALL).strip()
+        if think_stripped:
+            full_response = think_stripped
+        else:
+            # DeepSeek-R1 put entire answer inside <think> — extract it
+            think_match = re.search(r'<think>(.*?)</think>', full_response, re.DOTALL)
+            full_response = think_match.group(1).strip() if think_match else full_response
 
         code_matches = re.findall(r'```python\s*(.*?)```', full_response, re.DOTALL)
         if code_matches and any(w in prompt.lower() for w in [
