@@ -811,11 +811,11 @@ class FreeAgent:
         trigger_words = [
             "bug", "error", "fix", "broken", "not working", "issue", "debug",
             "feature", "add", "update",
-            "why", "how", "explain", "analyze", "analyse", "understand",
-            "not saving", "not working", "isn't", "doesn't",
+            "not saving", "isn't", "doesn't",
             "caveman", "token", "compress", "mode", "routing", "router",
-            "memory", "stream", "reasoning", "context", "inject",
+            "memory", "stream", "context", "inject",
             "code_runner", "code runner",
+            "app.py", "agent.py", "caveman.py", "memory.py", "router.py",
         ]
 
         triggered = any(word in prompt_lower for word in trigger_words)
