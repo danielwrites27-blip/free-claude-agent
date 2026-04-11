@@ -594,10 +594,7 @@ class FreeAgent:
         Only the final answer is streamed; tool rounds are non-streaming (fast).
         """
         MAX_TOOL_ROUNDS = 5
-
-        # Inject ReAct reasoning prompt at the front of the message list
-        react_message = {"role": "system", "content": REACT_SYSTEM_PROMPT}
-        current_messages = [react_message] + list(messages)
+        current_messages = list(messages)
 
         for round_num in range(MAX_TOOL_ROUNDS):
             # Non-streaming call to check for tool use
