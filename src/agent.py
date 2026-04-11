@@ -21,6 +21,16 @@ from .router import ModelRouter, GROQ, SAMBANOVA, CEREBRAS
 # Max turns to keep in live conversation context (before summarizing to memory)
 MAX_HISTORY_TURNS = 12  # 12 pairs = 24 messages
 
+REACT_SYSTEM_PROMPT = (
+    "You are a ReAct agent. For every step, follow this exact pattern:\n"
+    "Thought: <your reasoning about what to do next and why>\n"
+    "Action: <call exactly one tool>\n\n"
+    "After seeing each Observation (tool result), reason again before your next action.\n"
+    "If a previous step gave you enough information, stop calling tools and give your final answer directly.\n"
+    "If a tool returned an error or unhelpful result, try a different approach — don't repeat the same call.\n"
+    "Never make up tool results. Only use what you actually observed."
+)
+
 # ── Tool definitions for function calling API ─────────────────────────────────
 TOOL_DEFINITIONS = [
     {
@@ -577,16 +587,103 @@ class FreeAgent:
         max_output_tokens: int,
     ) -> Generator[str, None, None]:
         """
-        Streaming version of the tool calling loop.
-
-        Tool execution rounds are non-streaming (fast).
-        Only the FINAL answer is streamed to the user.
-        Yields text chunks + tool usage notifications.
+        ReAct streaming tool loop.
+        Injects a ReAct system prompt so the model reasons before each action.
+        Tool results are formatted as Observations so the model sees a clean
+        Thought → Action → Observation chain across all rounds.
+        Only the final answer is streamed; tool rounds are non-streaming (fast).
         """
         MAX_TOOL_ROUNDS = 5
-        current_messages = list(messages)
+
+        # Inject ReAct reasoning prompt at the front of the message list
+        react_message = {"role": "system", "content": REACT_SYSTEM_PROMPT}
+        current_messages = [react_message] + list(messages)
 
         for round_num in range(MAX_TOOL_ROUNDS):
+            # Non-streaming call to check for tool use
+            response = self._call_provider(
+                model=model,
+                provider=provider,
+                messages=current_messages,
+                max_tokens=max_output_tokens,
+                stream=False,
+                tools=TOOL_DEFINITIONS,
+                tool_choice="auto",
+            )
+            choice = response.choices[0]
+            message = choice.message
+
+            # No tool calls — model has reasoned to a final answer, stream it
+            if not message.tool_calls:
+                final_text = message.content or ""
+                words = final_text.split(" ")
+                for i, word in enumerate(words):
+                    yield word + (" " if i < len(words) - 1 else "")
+                return
+
+            # Show user which tools are being used this round
+            tool_names = [tc.function.name for tc in message.tool_calls]
+            yield f"\n\n🔧 *Using tools: {', '.join(tool_names)}...*\n\n"
+
+            # Append assistant message with tool_calls
+            current_messages.append({
+                "role": "assistant",
+                "content": message.content or "",
+                "tool_calls": [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments,
+                        }
+                    }
+                    for tc in message.tool_calls
+                ]
+            })
+
+            # Execute each tool and append result as an Observation
+            for tc in message.tool_calls:
+                try:
+                    args = json.loads(tc.function.arguments)
+                except json.JSONDecodeError:
+                    args = {}
+
+                tool_result = self._execute_tool_call(tc.function.name, args)
+
+                # Show code execution results inline
+                if tc.function.name == "run_python":
+                    yield f"`{tool_result}`\n\n"
+
+                # Wrap result as Observation so ReAct chain stays coherent
+                observation = f"Observation (round {round_num + 1}, tool={tc.function.name}): {tool_result}"
+
+                current_messages.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": observation,
+                })
+
+        # Exhausted MAX_TOOL_ROUNDS — ask for final synthesis
+        current_messages.append({
+            "role": "user",
+            "content": (
+                "You have completed all reasoning rounds. "
+                "Based on all your Observations above, give your final answer now. "
+                "Do not call any more tools."
+            )
+        })
+        final_stream = self._call_provider(
+            model=model,
+            provider=provider,
+            messages=current_messages,
+            max_tokens=max_output_tokens,
+            stream=True,
+        )
+        for chunk in final_stream:
+            delta = chunk.choices[0].delta
+            if delta and delta.content:
+                yield delta.content
             # Non-streaming call to check for tool use first
             response = self._call_provider(
                 model=model,
