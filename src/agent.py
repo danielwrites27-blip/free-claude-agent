@@ -995,7 +995,7 @@ class FreeAgent:
             self.conversation_history = self.conversation_history[2:]
 
     # ── PUBLIC API: ask() ─────────────────────────────────────────────────────
-    def ask(self, prompt: str, max_output_tokens: int = 1024) -> str:
+    def ask(self, prompt: str, max_output_tokens: int = 4096) -> str:
         """
         Main entry point (non-streaming).
 
@@ -1101,7 +1101,7 @@ class FreeAgent:
         return output
 
     # ── PUBLIC API: ask_stream() ──────────────────────────────────────────────
-    def ask_stream(self, prompt: str, max_output_tokens: int = 2048) -> Generator[str, None, None]:
+    def ask_stream(self, prompt: str, max_output_tokens: int = 4096) -> Generator[str, None, None]:
         """
         Streaming entry point.
 
