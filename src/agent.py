@@ -805,6 +805,62 @@ class FreeAgent:
         # Strip DeepSeek-R1 think tags if present
         full_response = re.sub(r'<think>.*?</think>', '', full_response, flags=re.DOTALL).strip()
 
+        # ── CODE EXECUTION FEEDBACK LOOP ─────────────────────────────────────
+        code_match = re.search(r'```python\s*(.*?)```', full_response, re.DOTALL)
+        if code_match and any(w in prompt.lower() for w in [
+            "write", "create", "build", "code", "script", "function",
+            "implement", "calculate", "compute", "solve", "run"
+        ]):
+            code = code_match.group(1).strip()
+            from src.code_runner import SafeCodeRunner
+            run_result = SafeCodeRunner.run(code)
+
+            if run_result['success'] and run_result['output']:
+                # Code ran fine — show output to user
+                execution_note = f"\n\n✅ **Code executed successfully** ({run_result['execution_time_ms']}ms):\n```\n{run_result['output']}\n```"
+                full_response += execution_note
+                yield execution_note
+
+            elif not run_result['success']:
+                # Code failed — ask LLM to fix it
+                error = run_result['error']
+                yield f"\n\n⚠️ **Code error detected, fixing...**\n```\n{error}\n```\n\n"
+
+                fix_messages = self._build_messages(
+                    f"The code you wrote has this error:\n{error}\n\nOriginal code:\n```python\n{code}\n```\n\nFix the code. Return only the corrected code in a ```python block, no explanation.",
+                    ""
+                )
+                fix_model, fix_provider = self.router.select_model(prompt, self.available_models, force_reasoning=False)
+                try:
+                    fix_stream = self._call_provider(
+                        model=fix_model,
+                        provider=fix_provider,
+                        messages=fix_messages,
+                        max_tokens=1024,
+                        stream=True,
+                    )
+                    fix_response = ""
+                    for chunk in fix_stream:
+                        delta = chunk.choices[0].delta
+                        if delta and delta.content:
+                            fix_response += delta.content
+                            yield delta.content
+
+                    # Try running the fixed code
+                    fix_match = re.search(r'```python\s*(.*?)```', fix_response, re.DOTALL)
+                    if fix_match:
+                        fixed_code = fix_match.group(1).strip()
+                        fix_run = SafeCodeRunner.run(fixed_code)
+                        if fix_run['success'] and fix_run['output']:
+                            fix_note = f"\n\n✅ **Fixed code executed successfully** ({fix_run['execution_time_ms']}ms):\n```\n{fix_run['output']}\n```"
+                            full_response += fix_note
+                            yield fix_note
+                        elif not fix_run['success']:
+                            yield f"\n\n❌ **Could not auto-fix. Error:** `{fix_run['error'][:200]}`"
+                except Exception as e:
+                    yield f"\n\n❌ **Fix attempt failed:** `{str(e)[:150]}`"
+        # ─────────────────────────────────────────────────────────────────────
+
         if self.caveman_mode:
             full_response = compress_response(full_response)
 
