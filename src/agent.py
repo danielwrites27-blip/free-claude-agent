@@ -11,7 +11,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Generator
 
-from groq import Groq
+from groq import Groq, RateLimitError as GroqRateLimitError
 import tiktoken
 
 from .caveman import CAVEMAN_SYSTEM_PROMPT, compress_response
@@ -530,7 +530,7 @@ class FreeAgent:
                     break
                 except Exception as e:
                     err = str(e).lower()
-                    if "429" in err or "rate_limit" in err or "tool_use_failed" in err or "failed_generation" in err:
+                    if isinstance(e, GroqRateLimitError) or "429" in err or "rate_limit" in err or "tool_use_failed" in err or "failed_generation" in err:
                         continue
                     raise
             if response is None:
@@ -627,7 +627,7 @@ class FreeAgent:
                     break
                 except Exception as e:
                     err = str(e).lower()
-                    if "429" in err or "rate_limit" in err or "tool_use_failed" in err or "failed_generation" in err:
+                    if isinstance(e, GroqRateLimitError) or "429" in err or "rate_limit" in err or "tool_use_failed" in err or "failed_generation" in err:
                         continue
                     raise
             if response is None:
