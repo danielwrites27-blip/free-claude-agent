@@ -1260,20 +1260,11 @@ class FreeAgent:
             if stream_gen is None:
                 yield "⚠️ All providers failed."
                 return
-            prev_provider = self._last_provider
             for chunk in stream_gen:
                 full_response += chunk
                 yield chunk
-            # Only update label from used_model if synthesis didn't switch provider
-            if self._last_provider == prev_provider:
-                model_label = {
-                    "llama-3.1-8b-instant": "⚡ 8B",
-                    "llama-3.3-70b-versatile": "🔥 70B",
-                    "qwen-3-235b-a22b-instruct-2507": "⚡ Qwen3",
-                    "Meta-Llama-3.3-70B-Instruct": "🔥 70B",
-                    "DeepSeek-R1-0528": "🧠 DeepSeek-R1",
-                }.get(used_model, "⚡ 8B")
-                self._last_model_label = model_label
+            # _last_provider updated inside synthesis loop if fallback triggered
+            # _last_model_label also updated there — don't overwrite it here
 
         # ── DEEP REASONING MODE: DeepSeek-R1 + keyword fallback ──────────
         else:
