@@ -2,6 +2,7 @@ import gradio as gr
 import os
 import logging
 import sys
+from logging.handlers import RotatingFileHandler
 from src.agent import FreeAgent
 
 # ─── Logging setup ────────────────────────────────────────────────────────────
@@ -10,7 +11,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("/app/agent.log", mode="a"),
+        RotatingFileHandler("/app/agent.log", maxBytes=5*1024*1024, backupCount=2),
     ]
 )
 logger = logging.getLogger("agent")
@@ -295,7 +296,6 @@ if auth_user and auth_pass:
     launch_kwargs["auth"] = (auth_user, auth_pass)
 
 # Tee stdout to log file so we can tail -f /app/agent.log
-import builtins
 _log_file = open("/app/agent.log", "a", buffering=1)
 class _Tee:
     def __init__(self, *streams): self.streams = streams
