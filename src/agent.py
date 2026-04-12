@@ -367,7 +367,7 @@ class FreeAgent:
 
         if self.cerebras_client:
             self.available_models["llama3.1-8b"] = {"provider": CEREBRAS, "rpd": 50000}
-            self.available_models["llama-3.3-70b"] = {"provider": CEREBRAS, "rpd": 10000}
+            self.available_models["qwen-3-235b-a22b-instruct-2507"] = {"provider": CEREBRAS, "rpd": 50000}
 
     def _reset_daily_if_needed(self):
         now = datetime.now()
@@ -509,7 +509,7 @@ class FreeAgent:
         tool_models_to_try = [(model, provider)]
         if model != "llama-3.1-8b-instant":
             tool_models_to_try.append(("llama-3.1-8b-instant", GROQ))
-        tool_models_to_try.append(("qwen3-235b-a22b", CEREBRAS))
+        tool_models_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
         tool_models_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
 
         for round_num in range(MAX_TOOL_ROUNDS):
@@ -606,7 +606,7 @@ class FreeAgent:
         tool_models_to_try = [(model, provider)]
         if model != "llama-3.1-8b-instant":
             tool_models_to_try.append(("llama-3.1-8b-instant", GROQ))
-        tool_models_to_try.append(("qwen3-235b-a22b", CEREBRAS))
+        tool_models_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
         tool_models_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
 
         for round_num in range(MAX_TOOL_ROUNDS):
@@ -1024,7 +1024,7 @@ class FreeAgent:
             providers_to_try = [(model, provider)]
             if provider != GROQ:
                 providers_to_try.append(("llama-3.3-70b-versatile", GROQ))
-            providers_to_try.append(("qwen3-235b-a22b", CEREBRAS))
+            providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
@@ -1060,7 +1060,7 @@ class FreeAgent:
             providers_to_try = [(model, provider)]
             if provider != GROQ:
                 providers_to_try.append(("llama-3.3-70b-versatile", GROQ))
-            providers_to_try.append(("qwen3-235b-a22b", CEREBRAS))
+            providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
@@ -1188,7 +1188,7 @@ class FreeAgent:
             providers_to_try = [(model, provider)]
             if provider != GROQ:
                 providers_to_try.append(("llama-3.3-70b-versatile", GROQ))
-            providers_to_try.append(("qwen3-235b-a22b", CEREBRAS))
+            providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
@@ -1210,7 +1210,7 @@ class FreeAgent:
             model_label = {
                 "llama-3.1-8b-instant": "⚡ 8B",
                 "llama-3.3-70b-versatile": "🔥 70B",
-                "qwen3-235b-a22b": "⚡ Qwen3",
+                "qwen-3-235b-a22b-instruct-2507": "⚡ Qwen3",
                 "Meta-Llama-3.3-70B-Instruct": "🔥 70B",
                 "DeepSeek-R1-0528": "🧠 DeepSeek-R1",
             }.get(used_model, "⚡ 8B")
@@ -1244,7 +1244,7 @@ class FreeAgent:
             providers_to_try = [(model, provider)]
             if provider != GROQ:
                 providers_to_try.append(("llama-3.3-70b-versatile", GROQ))
-            providers_to_try.append(("qwen3-235b-a22b", CEREBRAS))
+            providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
