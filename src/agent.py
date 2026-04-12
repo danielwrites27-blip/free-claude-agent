@@ -655,17 +655,25 @@ class FreeAgent:
                             "Do not recalculate or second-guess the tool results — use them exactly as returned."
                         )
                     })
-                    final_stream = self._call_provider(
-                        model=model,
-                        provider=provider,
-                        messages=current_messages,
-                        max_tokens=max_output_tokens,
-                        stream=True,
-                    )
-                    for chunk in final_stream:
-                        delta = chunk.choices[0].delta
-                        if delta and delta.content:
-                            yield delta.content
+                    for syn_model, syn_provider in tool_models_to_try:
+                        try:
+                            final_stream = self._call_provider(
+                                model=syn_model,
+                                provider=syn_provider,
+                                messages=current_messages,
+                                max_tokens=max_output_tokens,
+                                stream=True,
+                            )
+                            for chunk in final_stream:
+                                delta = chunk.choices[0].delta
+                                if delta and delta.content:
+                                    yield delta.content
+                            break
+                        except Exception as e:
+                            err = str(e).lower()
+                            if isinstance(e, GroqRateLimitError) or "429" in err or "rate_limit" in err:
+                                continue
+                            raise
                     return
 
             # Enforce one tool per round — take only the first tool call
@@ -716,17 +724,25 @@ class FreeAgent:
                 "Do not call any more tools."
             )
         })
-        final_stream = self._call_provider(
-            model=model,
-            provider=provider,
-            messages=current_messages,
-            max_tokens=max_output_tokens,
-            stream=True,
-        )
-        for chunk in final_stream:
-            delta = chunk.choices[0].delta
-            if delta and delta.content:
-                yield delta.content
+        for syn_model, syn_provider in tool_models_to_try:
+            try:
+                final_stream = self._call_provider(
+                    model=syn_model,
+                    provider=syn_provider,
+                    messages=current_messages,
+                    max_tokens=max_output_tokens,
+                    stream=True,
+                )
+                for chunk in final_stream:
+                    delta = chunk.choices[0].delta
+                    if delta and delta.content:
+                        yield delta.content
+                break
+            except Exception as e:
+                err = str(e).lower()
+                if isinstance(e, GroqRateLimitError) or "429" in err or "rate_limit" in err:
+                    continue
+                raise
 
     # ── URL FETCHING ──────────────────────────────────────────────────────────
     def _fetch_url_content(self, url: str) -> str:
