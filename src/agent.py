@@ -1263,8 +1263,8 @@ class FreeAgent:
             for chunk in stream_gen:
                 full_response += chunk
                 yield chunk
-            # _last_provider updated inside synthesis loop if fallback triggered
-            # _last_model_label also updated there — don't overwrite it here
+            # _last_provider and _last_model_label updated inside synthesis loop if fallback triggered
+            model_label = self._last_model_label
 
         # ── DEEP REASONING MODE: DeepSeek-R1 + keyword fallback ──────────
         else:
