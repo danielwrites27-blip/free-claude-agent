@@ -21,16 +21,6 @@ from .router import ModelRouter, GROQ, SAMBANOVA, CEREBRAS
 # Max turns to keep in live conversation context (before summarizing to memory)
 MAX_HISTORY_TURNS = 12  # 12 pairs = 24 messages
 
-REACT_SYSTEM_PROMPT = (
-    "You are a reasoning agent with access to tools. For each step:\n"
-    "1. Think about what information you need and why before calling any tool.\n"
-    "2. Call one tool at a time — do not batch unrelated calls.\n"
-    "3. After each tool result, reason about what you learned before deciding the next step.\n"
-    "4. If a tool returned an error or unhelpful result, try a different approach — do not repeat the same call.\n"
-    "5. Stop calling tools as soon as you have enough information to answer fully.\n"
-    "Never fabricate tool results. Only use what you actually received."
-)
-
 # ── Tool definitions for function calling API ─────────────────────────────────
 TOOL_DEFINITIONS = [
     {
@@ -926,7 +916,10 @@ class FreeAgent:
                 "When web search results or tool results are provided in context, "
                 "summarize naturally without listing URLs unless asked. "
                 "Use each tool at most once per query. "
-                "Do not repeat the same tool call with different phrasings."
+                "Do not repeat the same tool call with different phrasings. "
+                "Before calling a tool, think about what information you need and why. "
+                "After receiving a tool result, reason about what you learned before deciding the next step. "
+                "When you have enough information, synthesize all observations into a clear final answer."
             )
 
         messages = [{"role": "system", "content": system_content}]
