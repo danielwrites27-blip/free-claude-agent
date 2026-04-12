@@ -924,7 +924,9 @@ class FreeAgent:
                 "You are a helpful, harmless, and honest AI assistant. "
                 "Answer clearly and concisely, but provide detail when needed. "
                 "When web search results or tool results are provided in context, "
-                "summarize naturally without listing URLs unless asked."
+                "summarize naturally without listing URLs unless asked. "
+                "Use each tool at most once per query. "
+                "Do not repeat the same tool call with different phrasings."
             )
 
         messages = [{"role": "system", "content": system_content}]
