@@ -529,7 +529,8 @@ class FreeAgent:
                     model, provider = try_model, try_provider
                     break
                 except Exception as e:
-                    if "429" in str(e) or "rate_limit" in str(e).lower():
+                    err = str(e).lower()
+                    if "429" in err or "rate_limit" in err or "tool_use_failed" in err or "failed_generation" in err:
                         continue
                     raise
             if response is None:
@@ -625,7 +626,8 @@ class FreeAgent:
                     model, provider = try_model, try_provider
                     break
                 except Exception as e:
-                    if "429" in str(e) or "rate_limit" in str(e).lower():
+                    err = str(e).lower()
+                    if "429" in err or "rate_limit" in err or "tool_use_failed" in err or "failed_generation" in err:
                         continue
                     raise
             if response is None:
