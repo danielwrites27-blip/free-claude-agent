@@ -665,6 +665,7 @@ class FreeAgent:
                                 stream=False,
                             )
                             final_text = final_stream.choices[0].message.content or ""
+                            self._last_provider = syn_provider
                             yield final_text
                             break
                         except Exception as e:
@@ -732,6 +733,7 @@ class FreeAgent:
                     stream=False,
                 )
                 final_text = final_response.choices[0].message.content or ""
+                self._last_provider = syn_provider
                 yield final_text
                 break
             except Exception as e:
@@ -1243,6 +1245,13 @@ class FreeAgent:
                 except Exception:
                     continue
 
+            if stream_gen is None:
+                yield "⚠️ All providers failed."
+                return
+            for chunk in stream_gen:
+                full_response += chunk
+                yield chunk
+            # Set label AFTER generator consumed — _last_provider may have been updated by synthesis fallback
             model_label = {
                 "llama-3.1-8b-instant": "⚡ 8B",
                 "llama-3.3-70b-versatile": "🔥 70B",
@@ -1251,14 +1260,6 @@ class FreeAgent:
                 "DeepSeek-R1-0528": "🧠 DeepSeek-R1",
             }.get(used_model, "⚡ 8B")
             self._last_model_label = model_label
-
-            if stream_gen is None:
-                yield "⚠️ All providers failed."
-                return
-
-            for chunk in stream_gen:
-                full_response += chunk
-                yield chunk
 
         # ── DEEP REASONING MODE: DeepSeek-R1 + keyword fallback ──────────
         else:
