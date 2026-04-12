@@ -1183,10 +1183,9 @@ class FreeAgent:
 
         if not self.deep_reasoning_mode:
             model, provider = self.router.select_tool_capable_model(prompt, self.available_models)
-            model_label = self.router.get_complexity_label(prompt)
-            self._last_model_label = model_label
             self._last_provider = provider
             used_provider = provider
+            used_model = model
 
             providers_to_try = [(model, provider)]
             if provider != GROQ:
@@ -1205,9 +1204,19 @@ class FreeAgent:
                         max_output_tokens=max_output_tokens,
                     )
                     used_provider = try_provider
+                    used_model = try_model
                     break
                 except Exception:
                     continue
+
+            model_label = {
+                "llama-3.1-8b-instant": "⚡ 8B",
+                "llama-3.3-70b-versatile": "🔥 70B",
+                "qwen3-235b-a22b": "⚡ Qwen3",
+                "Meta-Llama-3.3-70B-Instruct": "🔥 70B",
+                "DeepSeek-R1-0528": "🧠 DeepSeek-R1",
+            }.get(used_model, "⚡ 8B")
+            self._last_model_label = model_label
 
             if stream_gen is None:
                 yield "⚠️ All providers failed."
