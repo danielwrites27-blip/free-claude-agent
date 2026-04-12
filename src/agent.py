@@ -200,7 +200,7 @@ class FreeAgent:
             raise ValueError(
                 "GROQ_API_KEY required. Get free key: https://console.groq.com/keys"
             )
-        self.groq_client = Groq(api_key=groq_key)
+        self.groq_client = Groq(api_key=groq_key, max_retries=0)
 
         # Sambanova
         sambanova_key = os.getenv("SAMBANOVA_API_KEY")
