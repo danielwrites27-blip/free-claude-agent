@@ -634,14 +634,37 @@ class FreeAgent:
 
             choice = response.choices[0]
             message = choice.message
-
             # No tool calls — stream the final answer
             if not message.tool_calls:
-                final_text = message.content or ""
-                words = final_text.split(" ")
-                for i, word in enumerate(words):
-                    yield word + (" " if i < len(words) - 1 else "")
-                return
+                if round_num == 0:
+                    # No tools used at all — stream directly
+                    final_text = message.content or ""
+                    words = final_text.split(" ")
+                    for i, word in enumerate(words):
+                        yield word + (" " if i < len(words) - 1 else "")
+                    return
+                else:
+                    # Tools were used — force synthesis from observations
+                    current_messages.append({
+                        "role": "user",
+                        "content": (
+                            "Using ONLY the tool results in your Observations above, "
+                            "give your final answer now. "
+                            "Do not recalculate or second-guess the tool results — use them exactly as returned."
+                        )
+                    })
+                    final_stream = self._call_provider(
+                        model=model,
+                        provider=provider,
+                        messages=current_messages,
+                        max_tokens=max_output_tokens,
+                        stream=True,
+                    )
+                    for chunk in final_stream:
+                        delta = chunk.choices[0].delta
+                        if delta and delta.content:
+                            yield delta.content
+                    return
 
             # Enforce one tool per round — take only the first tool call
             tool_calls_this_round = message.tool_calls[:1]
