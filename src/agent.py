@@ -505,10 +505,12 @@ class FreeAgent:
         """
         MAX_TOOL_ROUNDS = 5
         current_messages = list(messages)
-        # Fallback chain for rate limits — 70B → 8B
+        # Fallback chain for rate limits — primary → 8B → Cerebras → SambaNova
         tool_models_to_try = [(model, provider)]
         if model != "llama-3.1-8b-instant":
             tool_models_to_try.append(("llama-3.1-8b-instant", GROQ))
+        tool_models_to_try.append(("qwen3-235b-a22b", CEREBRAS))
+        tool_models_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
 
         for round_num in range(MAX_TOOL_ROUNDS):
             # Non-streaming call to check for tool use — with rate-limit fallback
@@ -604,6 +606,8 @@ class FreeAgent:
         tool_models_to_try = [(model, provider)]
         if model != "llama-3.1-8b-instant":
             tool_models_to_try.append(("llama-3.1-8b-instant", GROQ))
+        tool_models_to_try.append(("qwen3-235b-a22b", CEREBRAS))
+        tool_models_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
 
         for round_num in range(MAX_TOOL_ROUNDS):
             response = None
@@ -918,6 +922,7 @@ class FreeAgent:
                 "Use each tool at most once per query. "
                 "Do not repeat the same tool call with different phrasings. "
                 "Before calling a tool, think about what information you need and why. "
+                "Call only one tool per round — never batch multiple tools together. "
                 "After receiving a tool result, reason about what you learned before deciding the next step. "
                 "When you have enough information, synthesize all observations into a clear final answer."
             )
