@@ -643,10 +643,10 @@ class FreeAgent:
                     yield word + (" " if i < len(words) - 1 else "")
                 return
 
-            # Show user which tools are being used this round
-            tool_names = [tc.function.name for tc in message.tool_calls]
+            # Enforce one tool per round — take only the first tool call
+            tool_calls_this_round = message.tool_calls[:1]
+            tool_names = [tc.function.name for tc in tool_calls_this_round]
             yield f"\n\n🔧 *Using tools: {', '.join(tool_names)}...*\n\n"
-
             # Append assistant message with tool_calls
             current_messages.append({
                 "role": "assistant",
@@ -660,12 +660,11 @@ class FreeAgent:
                             "arguments": tc.function.arguments,
                         }
                     }
-                    for tc in message.tool_calls
+                    for tc in tool_calls_this_round
                 ]
             })
-
             # Execute each tool and append result
-            for tc in message.tool_calls:
+            for tc in tool_calls_this_round:
                 try:
                     args = json.loads(tc.function.arguments)
                 except json.JSONDecodeError:
