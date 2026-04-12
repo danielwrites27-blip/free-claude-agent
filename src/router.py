@@ -28,12 +28,12 @@ CEREBRAS = "cerebras"
 # Models that support native function/tool calling
 # DeepSeek-R1 on Sambanova does NOT support tool calling yet
 TOOL_CAPABLE_MODELS = {
-    "llama-3.3-70b-versatile",       # Groq — primary tool calling model
-    "llama-3.1-8b-instant",          # Groq — fallback tool calling model
-    "llama-3.3-70b",                 # Cerebras
-    "llama3.1-8b",                   # Cerebras
-    "Meta-Llama-3.3-70B-Instruct",   # Sambanova (Llama supports it)
-    "Meta-Llama-3.1-8B-Instruct",    # Sambanova (Llama supports it)
+    "llama-3.3-70b-versatile",            # Groq — primary tool calling model
+    "llama-3.1-8b-instant",               # Groq — fallback tool calling model
+    "llama3.1-8b",                        # Cerebras
+    "qwen-3-235b-a22b-instruct-2507",     # Cerebras — verified working
+    "Meta-Llama-3.3-70B-Instruct",        # Sambanova
+    "Meta-Llama-3.1-8B-Instruct",         # Sambanova
 }
 
 
