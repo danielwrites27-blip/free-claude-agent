@@ -662,12 +662,10 @@ class FreeAgent:
                                 provider=syn_provider,
                                 messages=current_messages,
                                 max_tokens=max_output_tokens,
-                                stream=True,
+                                stream=False,
                             )
-                            for chunk in final_stream:
-                                delta = chunk.choices[0].delta
-                                if delta and delta.content:
-                                    yield delta.content
+                            final_text = final_stream.choices[0].message.content or ""
+                            yield final_text
                             break
                         except Exception as e:
                             err = str(e).lower()
@@ -726,17 +724,15 @@ class FreeAgent:
         })
         for syn_model, syn_provider in tool_models_to_try:
             try:
-                final_stream = self._call_provider(
+                final_response = self._call_provider(
                     model=syn_model,
                     provider=syn_provider,
                     messages=current_messages,
                     max_tokens=max_output_tokens,
-                    stream=True,
+                    stream=False,
                 )
-                for chunk in final_stream:
-                    delta = chunk.choices[0].delta
-                    if delta and delta.content:
-                        yield delta.content
+                final_text = final_response.choices[0].message.content or ""
+                yield final_text
                 break
             except Exception as e:
                 err = str(e).lower()
