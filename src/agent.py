@@ -666,6 +666,12 @@ class FreeAgent:
                             )
                             final_text = final_stream.choices[0].message.content or ""
                             self._last_provider = syn_provider
+                            if syn_model != model:
+                                self._last_model_label = {
+                                    "qwen-3-235b-a22b-instruct-2507": "⚡ Qwen3",
+                                    "Meta-Llama-3.3-70B-Instruct": "🔥 70B",
+                                    "llama-3.1-8b-instant": "⚡ 8B",
+                                }.get(syn_model, "⚡ 8B")
                             yield final_text
                             break
                         except Exception as e:
@@ -734,6 +740,12 @@ class FreeAgent:
                 )
                 final_text = final_response.choices[0].message.content or ""
                 self._last_provider = syn_provider
+                if syn_model != model:
+                    self._last_model_label = {
+                        "qwen-3-235b-a22b-instruct-2507": "⚡ Qwen3",
+                        "Meta-Llama-3.3-70B-Instruct": "🔥 70B",
+                        "llama-3.1-8b-instant": "⚡ 8B",
+                    }.get(syn_model, "⚡ 8B")
                 yield final_text
                 break
             except Exception as e:
