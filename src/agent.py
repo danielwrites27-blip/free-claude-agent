@@ -193,6 +193,8 @@ class FreeAgent:
         self.encoder = tiktoken.get_encoding("cl100k_base")
         self.caveman_mode = caveman_mode
         self.deep_reasoning_mode = deep_reasoning_mode
+        self._last_model_label = "⚡ 8B"
+        self._last_provider = "groq"
 
         # ── Provider clients ──────────────────────────────────────────────
         groq_key = api_key or os.getenv("GROQ_API_KEY")
