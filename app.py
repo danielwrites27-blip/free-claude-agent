@@ -303,6 +303,10 @@ class _Tee:
         for s in self.streams: s.write(data)
     def flush(self):
         for s in self.streams: s.flush()
+    def isatty(self):
+        return False
+    def fileno(self):
+        return self.streams[0].fileno()
 sys.stdout = _Tee(sys.__stdout__, _log_file)
 sys.stderr = _Tee(sys.__stderr__, _log_file)
 
