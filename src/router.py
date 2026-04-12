@@ -28,7 +28,7 @@ CEREBRAS = "cerebras"
 # Models that support native function/tool calling
 # DeepSeek-R1 on Sambanova does NOT support tool calling yet
 TOOL_CAPABLE_MODELS = {
-    "llama-3.3-70b-versatile",            # Groq — primary tool calling model
+    "llama-3.3-70b-versatile",            # Groq — BROKEN for tool calling (XML bug)
     "llama-3.1-8b-instant",               # Groq — fallback tool calling model
     "llama3.1-8b",                        # Cerebras
     "qwen-3-235b-a22b-instruct-2507",     # Cerebras — verified working
@@ -148,15 +148,14 @@ class ModelRouter:
         """
         Shortcut: always returns a tool-capable model.
         Used in normal mode where tool calling must work.
-        Prefers Groq 70B → Groq 8B as they have best tool calling support.
+        Prefers Cerebras Qwen3 235B (best quality) → Groq 8B (fast fallback).
+        Note: Groq 70B broken for tool calling (XML format bug — monitor for fix).
         """
         tool_priority = [
-            ("llama-3.1-8b-instant",          GROQ),        # 70B broken on Groq for tool calling
-            ("llama3.1-8b",                   CEREBRAS),
-            ("Meta-Llama-3.3-70B-Instruct",   SAMBANOVA),
-            ("llama-3.3-70b-versatile",       GROQ),
-            ("llama-3.3-70b",                 CEREBRAS),
-            ("Meta-Llama-3.1-8B-Instruct",    SAMBANOVA),
+            ("qwen-3-235b-a22b-instruct-2507", CEREBRAS),   # PRIMARY — best tool calling quality
+            ("llama-3.1-8b-instant",            GROQ),       # Fast fallback — Groq 70B broken
+            ("Meta-Llama-3.3-70B-Instruct",     SAMBANOVA),  # SambaNova fallback
+            ("Meta-Llama-3.1-8B-Instruct",      SAMBANOVA),  # SambaNova last resort
         ]
         for model, provider in tool_priority:
             if model in available_models:
