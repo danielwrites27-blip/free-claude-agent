@@ -1,6 +1,19 @@
 import gradio as gr
 import os
+import logging
+import sys
 from src.agent import FreeAgent
+
+# ─── Logging setup ────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler("/app/agent.log", mode="a"),
+    ]
+)
+logger = logging.getLogger("agent")
 
 # ─── Agent factory (singleton per session) ────────────────────────────────────
 _agent_instance = None
@@ -280,5 +293,17 @@ auth_pass = os.getenv("HF_AUTH_PASSWORD")
 launch_kwargs = dict(server_name="0.0.0.0", server_port=7860, show_error=True)
 if auth_user and auth_pass:
     launch_kwargs["auth"] = (auth_user, auth_pass)
+
+# Tee stdout to log file so we can tail -f /app/agent.log
+import builtins
+_log_file = open("/app/agent.log", "a", buffering=1)
+class _Tee:
+    def __init__(self, *streams): self.streams = streams
+    def write(self, data):
+        for s in self.streams: s.write(data)
+    def flush(self):
+        for s in self.streams: s.flush()
+sys.stdout = _Tee(sys.__stdout__, _log_file)
+sys.stderr = _Tee(sys.__stderr__, _log_file)
 
 demo.launch(**launch_kwargs)
