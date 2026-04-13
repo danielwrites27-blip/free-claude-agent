@@ -77,13 +77,25 @@ class TokenEfficientMemory:
         if self.collection is not None:
             # ChromaDB path — upsert handles duplicates automatically
             try:
+                # Check if memory already exists — if so, boost confidence
+                existing = self.collection.get(ids=[mem_id], include=["metadatas"])
+                if existing and existing.get("ids"):
+                    old_meta = existing["metadatas"][0]
+                    confidence = float(old_meta.get("confidence", 1.0)) + 0.2
+                    access_count = int(old_meta.get("access_count", 0))
+                else:
+                    confidence = 1.0
+                    access_count = 0
                 self.collection.upsert(
                     ids=[mem_id],
                     documents=[content],
                     metadatas=[{
                         "tags": tags_str,
                         "token_count": actual_token_count,
-                        "timestamp": datetime.now().isoformat()
+                        "timestamp": datetime.now().isoformat(),
+                        "last_confirmed": datetime.now().isoformat(),
+                        "confidence": confidence,
+                        "access_count": access_count,
                     }]
                 )
             except Exception as e:
@@ -123,17 +135,53 @@ class TokenEfficientMemory:
                 )
                 docs = results.get("documents", [[]])[0]
                 metas = results.get("metadatas", [[]])[0]
+                distances = results.get("distances", [[]])[0]
 
+                # Score = similarity × confidence × recency_weight
+                now = datetime.now()
+                scored = []
+                for doc, meta, dist in zip(docs, metas, distances):
+                    similarity = 1.0 - dist  # cosine distance → similarity
+                    confidence = float(meta.get("confidence", 1.0))
+
+                    # Recency weight: decay over 30 days
+                    try:
+                        last_confirmed = datetime.fromisoformat(
+                            meta.get("last_confirmed", meta.get("timestamp", now.isoformat()))
+                        )
+                        age_days = (now - last_confirmed).days
+                        recency = max(0.2, 1.0 - (age_days / 30.0))
+                    except Exception:
+                        recency = 1.0
+
+                    score = similarity * min(confidence, 2.0) * recency
+                    scored.append((score, doc, meta))
+
+                # Re-rank by score descending
+                scored.sort(key=lambda x: x[0], reverse=True)
+
+                # Bump access_count for retrieved memories
                 selected = []
                 total_tokens = 0
-                for doc, meta in zip(docs, metas):
+                for score, doc, meta in scored:
                     tokens = meta.get("token_count", self._count_tokens(doc))
                     if total_tokens + tokens <= max_tokens:
                         selected.append(doc)
                         total_tokens += tokens
+                        # Update access_count in background
+                        try:
+                            mem_id = hashlib.sha256(doc.encode()).hexdigest()[:12]
+                            updated_meta = dict(meta)
+                            updated_meta["access_count"] = int(meta.get("access_count", 0)) + 1
+                            self.collection.upsert(
+                                ids=[mem_id],
+                                documents=[doc],
+                                metadatas=[updated_meta]
+                            )
+                        except Exception:
+                            pass
                     else:
                         break
-
                 return "\n\n---\n\n".join(selected) if selected else ""
 
             except Exception as e:
