@@ -156,6 +156,33 @@ TOOL_DEFINITIONS = [
             }
         }
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "store_memory",
+            "description": (
+                "Store an important fact, preference, or piece of information in long-term memory. "
+                "Use this when the user explicitly asks you to remember something, "
+                "or when you learn something important about the user or their project "
+                "that should be recalled in future sessions."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": "The fact or information to store in memory"
+                    },
+                    "tags": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional tags to categorize the memory e.g. ['user', 'project', 'preference']"
+                    }
+                },
+                "required": ["content"]
+            }
+        }
+    },
 ]
 
 # Keyword fallback triggers used ONLY in deep reasoning mode
@@ -483,6 +510,13 @@ class FreeAgent:
         elif tool_name == "calculate":
             return self._tool_calculate(tool_args.get("expression", ""))
 
+        elif tool_name == "store_memory":
+            content = tool_args.get("content", "")
+            tags = tool_args.get("tags", ["explicit"])
+            if not content:
+                return "❌ No content provided to store."
+            mem_id = self.memory.store(content=content, tags=tags)
+            return f"✅ Stored in memory: '{content[:80]}{'...' if len(content) > 80 else ''}' (id: {mem_id})"
         else:
             return f"❌ Unknown tool: {tool_name}"
 
