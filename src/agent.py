@@ -566,7 +566,7 @@ class FreeAgent:
             })
 
             # Execute each tool call and append results
-           for tc in message.tool_calls:
+            for tc in message.tool_calls:
                 try:
                     args = json.loads(tc.function.arguments)
                 except json.JSONDecodeError:
