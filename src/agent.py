@@ -507,6 +507,7 @@ class FreeAgent:
         """
         MAX_TOOL_ROUNDS = 5
         current_messages = list(messages)
+        seen_tool_calls = set()  # loop detection: track (tool_name, args) pairs
         # Fallback chain for rate limits — primary → 8B → Cerebras → SambaNova
         tool_models_to_try = [(model, provider)]
         if model != "llama-3.1-8b-instant":
@@ -565,20 +566,57 @@ class FreeAgent:
             })
 
             # Execute each tool call and append results
-            for tc in message.tool_calls:
+           for tc in message.tool_calls:
                 try:
                     args = json.loads(tc.function.arguments)
                 except json.JSONDecodeError:
                     args = {}
 
+                # Loop detection — skip duplicate tool+args combinations
+                call_signature = (tc.function.name, tc.function.arguments.strip())
+                if call_signature in seen_tool_calls:
+                    current_messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": (
+                            "[Loop detected] You already called this tool with these exact arguments. "
+                            "Do not repeat it. Synthesize your answer from what you already have."
+                        ),
+                    })
+                    continue
+                seen_tool_calls.add(call_signature)
+
                 tool_result = self._execute_tool_call(tc.function.name, args)
+
+                # Self-correction: enrich error results with guidance
+                is_error = any(marker in tool_result for marker in [
+                    "Error", "error", "❌", "failed", "not found", "No results"
+                ])
+                if is_error:
+                    tool_result = (
+                        f"{tool_result}\n\n"
+                        "[Self-correction] This tool call did not succeed. "
+                        "Do NOT repeat the same call. "
+                        "Try a different query, a different tool, or reason from what you already know."
+                    )
+
+                # Self-correction: enrich error results with guidance
+                is_error = any(marker in tool_result for marker in [
+                    "Error", "error", "❌", "failed", "not found", "No results"
+                ])
+                if is_error:
+                    tool_result = (
+                        f"{tool_result}\n\n"
+                        f"[Self-correction] This tool call did not succeed. "
+                        f"Do NOT repeat the same call. "
+                        f"Try a different query, a different tool, or reason from what you already know."
+                    )
 
                 current_messages.append({
                     "role": "tool",
                     "tool_call_id": tc.id,
                     "content": tool_result,
                 })
-
         # Exhausted rounds — ask model to summarize what it has
         current_messages.append({
             "role": "user",
@@ -606,6 +644,7 @@ class FreeAgent:
         """
         MAX_TOOL_ROUNDS = 5
         current_messages = list(messages)
+        seen_tool_calls = set()  # loop detection: track (tool_name, args) pairs
         tool_models_to_try = [(model, provider)]
         if model != "llama-3.1-8b-instant":
             tool_models_to_try.append(("llama-3.1-8b-instant", GROQ))
@@ -710,7 +749,33 @@ class FreeAgent:
                 except json.JSONDecodeError:
                     args = {}
 
+                # Loop detection — skip duplicate tool+args combinations
+                call_signature = (tc.function.name, tc.function.arguments.strip())
+                if call_signature in seen_tool_calls:
+                    current_messages.append({
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "content": (
+                            "[Loop detected] You already called this tool with these exact arguments. "
+                            "Do not repeat it. Synthesize your answer from what you already have."
+                        ),
+                    })
+                    continue
+                seen_tool_calls.add(call_signature)
+
                 tool_result = self._execute_tool_call(tc.function.name, args)
+
+                # Self-correction: enrich error results with guidance
+                is_error = any(marker in tool_result for marker in [
+                    "Error", "error", "❌", "failed", "not found", "No results"
+                ])
+                if is_error:
+                    tool_result = (
+                        f"{tool_result}\n\n"
+                        "[Self-correction] This tool call did not succeed. "
+                        "Do NOT repeat the same call. "
+                        "Try a different query, a different tool, or reason from what you already know."
+                    )
 
                 if tc.function.name == "run_python":
                     yield f"`{tool_result}`\n\n"
@@ -970,13 +1035,29 @@ class FreeAgent:
                 "You are a helpful, harmless, and honest AI assistant. "
                 "Answer clearly and concisely, but provide detail when needed. "
                 "When web search results or tool results are provided in context, "
-                "summarize naturally without listing URLs unless asked. "
-                "Use each tool at most once per query. "
-                "Do not repeat the same tool call with different phrasings. "
-                "Before calling a tool, think about what information you need and why. "
+                "summarize naturally without listing URLs unless asked. \n\n"
+
+                "PLANNING RULE:\n"
+                "Before calling any tool, state a brief plan: what you need to find "
+                "and which tools you will use, in what order. "
+                "Do not jump into tool calls without a plan.\n\n"
+
+                "TOOL DISCIPLINE:\n"
                 "Call only one tool per round — never batch multiple tools together. "
-                "After receiving a tool result, reason about what you learned before deciding the next step. "
-                "When you have enough information, synthesize all observations into a clear final answer."
+                "Use each tool at most once per query. "
+                "Do not repeat the same tool call with the same or similar arguments. "
+                "If a tool returns an error or empty result, switch strategy — "
+                "try a different query, a different tool, or reason from what you already know.\n\n"
+
+                "LOOP GUARD:\n"
+                "If you have called 3 or more tools and still lack a clear answer, "
+                "stop calling tools and synthesize the best answer from what you have. "
+                "Never call the same tool with the same arguments twice.\n\n"
+
+                "SYNTHESIS:\n"
+                "After receiving tool results, reason about what you learned. "
+                "When you have enough information, synthesize all observations "
+                "into a clear, direct final answer."
             )
 
         messages = [{"role": "system", "content": system_content}]
