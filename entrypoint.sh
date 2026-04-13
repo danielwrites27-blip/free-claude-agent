@@ -1,4 +1,5 @@
 #!/bin/bash
-# Fix volume permissions then drop to appuser
+# Fix volume permissions
 chown -R appuser:appuser /app/data 2>/dev/null || true
-exec su -s /bin/bash appuser -c "python /app/app.py"
+# Drop to appuser and run app
+exec su-exec appuser python /app/app.py
