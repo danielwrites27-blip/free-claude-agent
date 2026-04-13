@@ -486,6 +486,49 @@ class FreeAgent:
         else:
             return f"❌ Unknown tool: {tool_name}"
 
+  # ── REVIEW PASS ───────────────────────────────────────────────────────────
+    def _review_pass(self, answer: str, model: str, provider: str, max_tokens: int) -> str:
+        """
+        Lightweight self-review: check if the answer is complete and accurate.
+        Returns improved answer if issues found, original answer otherwise.
+        Adds ~1 API call latency only on tool-using queries.
+        """
+        try:
+            review_messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a reviewer. Your job is to check if an AI answer is complete, "
+                        "accurate, and directly addresses what was asked. "
+                        "If the answer is good, reply with exactly: LGTM\n"
+                        "If the answer has issues (missing info, wrong facts, incomplete), "
+                        "reply with the corrected and complete answer only — no preamble."
+                    )
+                },
+                {
+                    "role": "user",
+                    "content": f"Review this answer and either reply LGTM or provide a corrected version:\n\n{answer}"
+                }
+            ]
+            review_response = self._call_provider(
+                model=model,
+                provider=provider,
+                messages=review_messages,
+                max_tokens=max_tokens // 2,
+                stream=False,
+            )
+            reviewed = review_response.choices[0].message.content or ""
+            if reviewed.strip().upper().startswith("LGTM"):
+                return answer  # original is good
+            elif len(reviewed.strip()) > 20:
+                print(f"[ReviewPass] Answer improved by reviewer", flush=True)
+                return reviewed  # use improved version
+            else:
+                return answer  # fallback to original if review is too short
+        except Exception as e:
+            print(f"[ReviewPass] Failed: {e} — using original answer", flush=True)
+            return answer  # always safe — never breaks the response
+  
     # ── NATIVE TOOL CALLING LOOP (Normal mode) ────────────────────────────────
     def _run_tool_calling_loop(
         self,
@@ -713,6 +756,8 @@ class FreeAgent:
                                 "llama-3.1-8b-instant": "⚡ 8B",
                                 "llama-3.3-70b-versatile": "🔥 70B",
                             }.get(syn_model, "⚡ 8B")
+                            # Review pass — lightweight self-check
+                            final_text = self._review_pass(final_text, syn_model, syn_provider, max_output_tokens)
                             yield final_text
                             break
                         except Exception as e:
@@ -813,6 +858,8 @@ class FreeAgent:
                     "llama-3.1-8b-instant": "⚡ 8B",
                     "llama-3.3-70b-versatile": "🔥 70B",
                 }.get(syn_model, "⚡ 8B")
+                # Review pass — lightweight self-check
+                final_text = self._review_pass(final_text, syn_model, syn_provider, max_output_tokens)
                 yield final_text
                 break
             except Exception as e:
