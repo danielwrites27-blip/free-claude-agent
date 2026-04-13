@@ -25,9 +25,8 @@ class TokenEfficientMemory:
         """Initialize ChromaDB with local sentence-transformer embeddings"""
         try:
             import chromadb
-            # EphemeralClient = in-memory, no persistence needed
-            # (pod restarts wipe disk anyway — same behavior as before)
-            self.client = chromadb.EphemeralClient()
+            # PersistentClient = writes to disk, survives app restarts within pod lifetime
+            self.client = chromadb.PersistentClient(path="/app/data/chromadb")
             self.collection = self.client.get_or_create_collection(
                 name="agent-memories",
                 metadata={"hnsw:space": "cosine"}
