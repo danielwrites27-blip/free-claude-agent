@@ -164,7 +164,8 @@ TOOL_DEFINITIONS = [
                 "Store an important fact, preference, or piece of information in long-term memory. "
                 "Use this when the user explicitly asks you to remember something, "
                 "or when you learn something important about the user or their project "
-                "that should be recalled in future sessions."
+                "that should be recalled in future sessions. "
+                "After storing, confirm to the user what was saved in a friendly, concise message."
             ),
             "parameters": {
                 "type": "object",
@@ -516,7 +517,11 @@ class FreeAgent:
             if not content:
                 return "❌ No content provided to store."
             mem_id = self.memory.store(content=content, tags=tags)
-            return f"✅ Stored in memory: '{content[:80]}{'...' if len(content) > 80 else ''}' (id: {mem_id})"
+            return (
+                f"✅ Memory stored successfully. "
+                f"Content: '{content[:80]}{'...' if len(content) > 80 else ''}'. "
+                f"You should now confirm to the user that you have remembered this information."
+            )
         else:
             return f"❌ Unknown tool: {tool_name}"
 
