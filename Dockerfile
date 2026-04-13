@@ -11,7 +11,7 @@ COPY src/ ./src/
 COPY app.py .
 COPY .env.example .env
 
-RUN useradd -m appuser && chown -R appuser:appuser /app
+RUN useradd -m appuser && mkdir -p /app/data/chromadb && chown -R appuser:appuser /app
 USER appuser
 
 ENV GRADIO_SERVER_NAME=0.0.0.0
