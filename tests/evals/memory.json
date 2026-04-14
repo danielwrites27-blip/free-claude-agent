@@ -1,0 +1,82 @@
+[
+  {
+    "id": "mem_001",
+    "category": "memory",
+    "description": "Store and immediately recall — same session",
+    "input": "Remember that my project is called free-claude-agent and it runs on Kubernetes.",
+    "expected_tool": "store_memory",
+    "expected_contains": [],
+    "must_not_contain": ["cannot", "unable"],
+    "judge_rubric": "Did the agent confirm the memory was stored without errors?"
+  },
+  {
+    "id": "mem_002",
+    "category": "memory",
+    "description": "Recall previously stored project fact",
+    "input": "What is my project called and where does it run?",
+    "expected_tool": "recall_memory",
+    "expected_contains": ["free-claude-agent", "kubernetes"],
+    "must_not_contain": ["I don't know", "I don't have"],
+    "judge_rubric": "Did the agent recall both 'free-claude-agent' and 'Kubernetes' from memory?"
+  },
+  {
+    "id": "mem_003",
+    "category": "memory",
+    "description": "Recall user identity",
+    "input": "What is my name?",
+    "expected_tool": "recall_memory",
+    "expected_contains": ["daniel"],
+    "must_not_contain": ["I don't know your name", "I don't have access"],
+    "judge_rubric": "Did the agent recall the name Daniel from memory?"
+  },
+  {
+    "id": "mem_004",
+    "category": "memory",
+    "description": "Recall UI preference",
+    "input": "What UI theme do I prefer?",
+    "expected_tool": "recall_memory",
+    "expected_contains": ["dark"],
+    "must_not_contain": ["I don't know", "no information"],
+    "judge_rubric": "Did the agent recall the dark mode preference from memory?"
+  },
+  {
+    "id": "mem_005",
+    "category": "memory",
+    "description": "Store a new preference",
+    "input": "Remember that I always want responses in English, never in Hindi.",
+    "expected_tool": "store_memory",
+    "expected_contains": [],
+    "must_not_contain": ["cannot", "unable"],
+    "judge_rubric": "Did the agent store the language preference without errors?"
+  },
+  {
+    "id": "mem_006",
+    "category": "memory",
+    "description": "BM25 keyword match — exact term recall",
+    "input": "What do you know about ChromaDB in this project?",
+    "expected_tool": "recall_memory",
+    "expected_contains": ["chromadb"],
+    "must_not_contain": ["I don't know", "no information"],
+    "judge_rubric": "Did the agent use recall_memory and return relevant ChromaDB information?"
+  },
+  {
+    "id": "mem_007",
+    "category": "memory",
+    "description": "Semantic recall — no exact keyword match",
+    "input": "How does this project store information between conversations?",
+    "expected_tool": "recall_memory",
+    "expected_contains": [],
+    "must_not_contain": ["I don't know"],
+    "judge_rubric": "Did the agent use recall_memory and return something about persistent memory or ChromaDB, even though those exact words weren't in the query?"
+  },
+  {
+    "id": "mem_008",
+    "category": "memory",
+    "description": "Hybrid recall — BM25 should boost exact match",
+    "input": "What do you know about the GROQ_API_KEY?",
+    "expected_tool": "recall_memory",
+    "expected_contains": [],
+    "must_not_contain": ["I don't know"],
+    "judge_rubric": "Did the agent attempt recall_memory for the exact term GROQ_API_KEY and return something relevant?"
+  }
+]
