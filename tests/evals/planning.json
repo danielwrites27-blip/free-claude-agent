@@ -1,0 +1,62 @@
+[
+  {
+    "id": "pln_001",
+    "category": "planning",
+    "description": "Multi-step task — should plan before acting",
+    "input": "Find the current Bitcoin price, then calculate how many whole Bitcoins I could buy with $10,000.",
+    "expected_tool": "web_search",
+    "expected_contains": ["10,000", "$10000", "10000"],
+    "must_not_contain": [],
+    "judge_rubric": "Did the agent: (1) search for Bitcoin price, (2) divide 10000 by that price, (3) give a whole-number answer? All three steps required for full marks."
+  },
+  {
+    "id": "pln_002",
+    "category": "planning",
+    "description": "Plan stated before tools — nudge check",
+    "input": "Search for the latest Groq API updates, then tell me if anything affects our agent's fallback chain.",
+    "expected_tool": "web_search",
+    "expected_contains": [],
+    "must_not_contain": [],
+    "judge_rubric": "Did the agent state a plan (e.g. 'I will search for... then analyse...') BEFORE calling the tool, not just dive straight into tool use?"
+  },
+  {
+    "id": "pln_003",
+    "category": "planning",
+    "description": "Two-tool chain — memory then calculation",
+    "input": "What is my daily token limit, and what percentage of it would 15,000 tokens represent?",
+    "expected_tool": "recall_memory",
+    "expected_contains": ["%", "percent"],
+    "must_not_contain": [],
+    "judge_rubric": "Did the agent: (1) recall the daily token limit from memory, (2) calculate the percentage? Both steps required."
+  },
+  {
+    "id": "pln_004",
+    "category": "planning",
+    "description": "Self-correction trigger — bad tool input recovery",
+    "input": "Fetch the contents of https://thisisafakedomainthatdoesnotexist123456.com",
+    "expected_tool": "fetch_url",
+    "expected_contains": [],
+    "must_not_contain": ["thisisafakedomainthatdoesnotexist123456.com is a real"],
+    "judge_rubric": "Did the agent attempt fetch_url, get an error, and then gracefully report the failure rather than hallucinating content?"
+  },
+  {
+    "id": "pln_005",
+    "category": "planning",
+    "description": "Loop detection — should not repeat same search",
+    "input": "Search for free AI APIs three times and give me a combined summary.",
+    "expected_tool": "web_search",
+    "expected_contains": [],
+    "must_not_contain": ["Loop detected"],
+    "judge_rubric": "Did the agent search once (not three times with identical args) and give a summary? Loop detection should prevent triple identical searches."
+  },
+  {
+    "id": "pln_006",
+    "category": "planning",
+    "description": "Synthesis from multiple observations",
+    "input": "Search for both Cerebras and SambaNova free tier limits and compare them.",
+    "expected_tool": "web_search",
+    "expected_contains": ["cerebras", "sambanova"],
+    "must_not_contain": [],
+    "judge_rubric": "Did the agent search at least twice (once per provider) and synthesize a comparison, not just return raw search snippets?"
+  }
+]
