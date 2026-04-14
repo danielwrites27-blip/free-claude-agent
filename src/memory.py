@@ -37,7 +37,9 @@ class TokenEfficientMemory:
         try:
             import chromadb
             # PersistentClient = writes to disk, survives app restarts within pod lifetime
-            self.client = chromadb.PersistentClient(path="/app/data/chromadb")
+            import os
+            CHROMA_PATH = os.getenv("CHROMA_PATH", "/app/data/chromadb")
+            self.client = chromadb.PersistentClient(path=CHROMA_PATH)
             self.collection = self.client.get_or_create_collection(
                 name="agent-memories",
                 metadata={"hnsw:space": "cosine"}
