@@ -2,6 +2,11 @@
 Semantic memory layer using ChromaDB + sentence-transformers.
 Replaces SQLite FTS5 keyword search with vector similarity search.
 Same interface as TokenEfficientMemory — drop-in replacement.
+
+SocratiCode hybrid search (Session 11):
+  recall() now runs BM25 keyword search + ChromaDB vector search in parallel,
+  fuses results with Reciprocal Rank Fusion (RRF), then re-scores with
+  confidence × recency weighting. Requires: rank-bm25 in requirements.txt
 """
 import hashlib
 import json
@@ -11,7 +16,7 @@ from datetime import datetime
 
 
 class TokenEfficientMemory:
-    """Semantic memory with ChromaDB vector search + token budgeting.
+    """Semantic memory with ChromaDB vector search + BM25 hybrid recall + token budgeting.
     Drop-in replacement for SQLite FTS5 version — same store()/recall() interface.
     """
 
@@ -118,32 +123,88 @@ class TokenEfficientMemory:
 
         return mem_id
 
+    # ------------------------------------------------------------------
+    # SocratiCode hybrid search helpers (Session 11)
+    # ------------------------------------------------------------------
+
+    def _bm25_recall(self, query: str, n: int) -> list:
+        """BM25 keyword search over all stored memories.
+        Returns list of (doc, meta) tuples ranked by BM25 score (score > 0 only).
+        Falls back to empty list on any error so recall() is never broken.
+        """
+        try:
+            from rank_bm25 import BM25Okapi
+            all_data = self.collection.get(include=["documents", "metadatas"])
+            docs = all_data.get("documents", [])
+            metas = all_data.get("metadatas", [])
+            if not docs:
+                return []
+            tokenized_corpus = [d.lower().split() for d in docs]
+            bm25 = BM25Okapi(tokenized_corpus)
+            scores = bm25.get_scores(query.lower().split())
+            ranked = sorted(zip(scores, docs, metas), key=lambda x: x[0], reverse=True)
+            # Only return memories that actually matched (score > 0)
+            return [(doc, meta) for score, doc, meta in ranked[:n] if score > 0]
+        except Exception as e:
+            print(f"[Memory] BM25 recall failed: {e}", flush=True)
+            return []
+
+    def _rrf_fuse(self, ranked_lists: list, k: int = 60) -> list:
+        """Reciprocal Rank Fusion across multiple ranked result lists.
+
+        ranked_lists: list of lists, each inner list is [(doc, meta), ...]
+                      ordered best-first.
+        k:            RRF constant (default 60, per original paper).
+                      Higher k = smoother ranks, lower k = top ranks dominate.
+
+        Returns merged list of (fused_score, doc, meta) sorted descending.
+        A doc appearing in both lists scores higher than one in only one list.
+        """
+        scores = {}
+        doc_store = {}
+        for ranked in ranked_lists:
+            for rank, (doc, meta) in enumerate(ranked):
+                key = hashlib.sha256(doc.encode()).hexdigest()[:12]
+                scores[key] = scores.get(key, 0.0) + 1.0 / (k + rank + 1)
+                doc_store[key] = (doc, meta)
+        fused = [(score, *doc_store[key]) for key, score in scores.items()]
+        fused.sort(key=lambda x: x[0], reverse=True)
+        return fused  # list of (fused_score, doc, meta)
+
+    # ------------------------------------------------------------------
+
     def recall(self, query: str, top_k: int = 3, max_tokens: int = 2000) -> str:
-        """Semantic similarity search with token budget enforcement"""
+        """Hybrid BM25 + vector similarity search with RRF fusion and token budget."""
         if self.collection is not None:
-            # ChromaDB semantic search path
             try:
                 count = self.collection.count()
                 if count == 0:
                     return ""
-                # Query returns most semantically similar memories
-                results = self.collection.query(
+
+                # --- Hybrid: BM25 + Vector, fused with RRF ---
+                n_candidates = min(top_k * 3, count)
+
+                # Vector search (ChromaDB cosine similarity)
+                vec_results = self.collection.query(
                     query_texts=[query],
-                    n_results=min(top_k * 2, count),
+                    n_results=n_candidates,
                     include=["documents", "metadatas", "distances"]
                 )
-                docs = results.get("documents", [[]])[0]
-                metas = results.get("metadatas", [[]])[0]
-                distances = results.get("distances", [[]])[0]
+                vec_docs  = vec_results.get("documents", [[]])[0]
+                vec_metas = vec_results.get("metadatas", [[]])[0]
+                vec_list  = list(zip(vec_docs, vec_metas))
 
-                # Score = similarity × confidence × recency_weight
+                # BM25 keyword search
+                bm25_list = self._bm25_recall(query, n_candidates)
+
+                # RRF fusion — docs in both lists score higher
+                fused = self._rrf_fuse([vec_list, bm25_list])
+
+                # Re-score with confidence × recency on top of fused rank score
                 now = datetime.now()
                 scored = []
-                for doc, meta, dist in zip(docs, metas, distances):
-                    similarity = 1.0 - dist  # cosine distance → similarity
+                for fused_score, doc, meta in fused:
                     confidence = float(meta.get("confidence", 1.0))
-
-                    # Recency weight: decay over 30 days
                     try:
                         last_confirmed = datetime.fromisoformat(
                             meta.get("last_confirmed", meta.get("timestamp", now.isoformat()))
@@ -152,17 +213,15 @@ class TokenEfficientMemory:
                         recency = max(0.2, 1.0 - (age_days / 30.0))
                     except Exception:
                         recency = 1.0
-
-                    score = similarity * min(confidence, 2.0) * recency
+                    score = fused_score * min(confidence, 2.0) * recency
                     scored.append((score, doc, meta))
 
-                # Re-rank by score descending
                 scored.sort(key=lambda x: x[0], reverse=True)
 
-                # Bump access_count for retrieved memories
+                # Apply token budget and bump access_count for retrieved memories
                 selected = []
                 total_tokens = 0
-                for score, doc, meta in scored:
+                for score, doc, meta in scored[:top_k * 2]:
                     tokens = meta.get("token_count", self._count_tokens(doc))
                     if total_tokens + tokens <= max_tokens:
                         selected.append(doc)
@@ -181,13 +240,14 @@ class TokenEfficientMemory:
                             pass
                     else:
                         break
+
                 return "\n\n---\n\n".join(selected) if selected else ""
 
             except Exception as e:
                 print(f"[Memory] ChromaDB recall failed: {e}", flush=True)
                 return ""
         else:
-            # SQLite fallback path
+            # SQLite fallback path (unchanged)
             import sqlite3
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
@@ -265,7 +325,7 @@ class TokenEfficientMemory:
             return [r[0] for r in rows]
 
 
-# WorkingMemory and ConversationSummarizer unchanged — keep as-is
+# WorkingMemory and ConversationSummarizer unchanged
 class WorkingMemory:
     """Short-term reasoning state for current conversation"""
 
