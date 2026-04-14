@@ -10,6 +10,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src/
 COPY app.py .
 COPY .env.example .env
+# Don't copy test files into the image — evals run locally, not in the pod
+COPY src/ ./src/
+COPY app.py requirements.txt entrypoint.sh ./
+# No COPY tests/ — intentionally excluded
 
 RUN useradd -m appuser && mkdir -p /app/data/chromadb && chown -R appuser:appuser /app
 COPY entrypoint.sh /entrypoint.sh
