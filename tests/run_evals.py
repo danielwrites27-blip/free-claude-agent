@@ -211,7 +211,7 @@ Rubric question: {ev['judge_rubric']}"""
             ],
             temperature=0.1,   # low temp for consistent grading
             top_p=0.95,
-            max_tokens=150,
+            max_tokens=1024,
         )
         raw = completion.choices[0].message.content.strip()
         # Strip <think>...</think> blocks (reasoning models)
