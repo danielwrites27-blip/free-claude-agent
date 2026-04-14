@@ -214,6 +214,9 @@ Rubric question: {ev['judge_rubric']}"""
             max_tokens=150,
         )
         raw = completion.choices[0].message.content.strip()
+        # Strip <think>...</think> blocks (reasoning models)
+        import re
+        raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
         # Strip markdown fences if present
         raw = raw.replace("```json", "").replace("```", "").strip()
         parsed = json.loads(raw)
