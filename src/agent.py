@@ -682,18 +682,6 @@ class FreeAgent:
                         "Try a different query, a different tool, or reason from what you already know."
                     )
 
-                # Self-correction: enrich error results with guidance
-                is_error = any(marker in tool_result for marker in [
-                    "Error", "error", "❌", "failed", "not found", "No results"
-                ])
-                if is_error:
-                    tool_result = (
-                        f"{tool_result}\n\n"
-                        f"[Self-correction] This tool call did not succeed. "
-                        f"Do NOT repeat the same call. "
-                        f"Try a different query, a different tool, or reason from what you already know."
-                    )
-
                 current_messages.append({
                     "role": "tool",
                     "tool_call_id": tc.id,
