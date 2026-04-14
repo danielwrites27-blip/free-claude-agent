@@ -7,6 +7,12 @@ SocratiCode hybrid search (Session 11):
   recall() now runs BM25 keyword search + ChromaDB vector search in parallel,
   fuses results with Reciprocal Rank Fusion (RRF), then re-scores with
   confidence × recency weighting. Requires: rank-bm25 in requirements.txt
+
+Session 12 fixes:
+  - access_count bump now uses collection.update() (metadata-only) instead of
+    upsert(), eliminating unnecessary re-embedding on every recall hit.
+  - RRF k parameter is now passed explicitly from recall() so it's tunable
+    without touching _rrf_fuse() internals.
 """
 import hashlib
 import json
@@ -149,13 +155,14 @@ class TokenEfficientMemory:
             print(f"[Memory] BM25 recall failed: {e}", flush=True)
             return []
 
-    def _rrf_fuse(self, ranked_lists: list, k: int = 60) -> list:
+    def _rrf_fuse(self, ranked_lists: list, k: int) -> list:
         """Reciprocal Rank Fusion across multiple ranked result lists.
 
         ranked_lists: list of lists, each inner list is [(doc, meta), ...]
                       ordered best-first.
-        k:            RRF constant (default 60, per original paper).
+        k:            RRF constant (per original paper k=60 is the default).
                       Higher k = smoother ranks, lower k = top ranks dominate.
+                      Passed explicitly from recall() so it's tunable in one place.
 
         Returns merged list of (fused_score, doc, meta) sorted descending.
         A doc appearing in both lists scores higher than one in only one list.
@@ -198,7 +205,10 @@ class TokenEfficientMemory:
                 bm25_list = self._bm25_recall(query, n_candidates)
 
                 # RRF fusion — docs in both lists score higher
-                fused = self._rrf_fuse([vec_list, bm25_list])
+                # k=60 is the paper default; increase to smooth rankings,
+                # decrease to make top-1 results dominate more strongly.
+                RRF_K = 60
+                fused = self._rrf_fuse([vec_list, bm25_list], k=RRF_K)
 
                 # Re-score with confidence × recency on top of fused rank score
                 now = datetime.now()
@@ -226,14 +236,15 @@ class TokenEfficientMemory:
                     if total_tokens + tokens <= max_tokens:
                         selected.append(doc)
                         total_tokens += tokens
-                        # Update access_count in background
+                        # Bump access_count using metadata-only update — no re-embedding.
+                        # collection.update() updates metadata in-place without touching
+                        # the stored embedding, unlike upsert() which re-generates it.
                         try:
                             mem_id = hashlib.sha256(doc.encode()).hexdigest()[:12]
                             updated_meta = dict(meta)
                             updated_meta["access_count"] = int(meta.get("access_count", 0)) + 1
-                            self.collection.upsert(
+                            self.collection.update(
                                 ids=[mem_id],
-                                documents=[doc],
                                 metadatas=[updated_meta]
                             )
                         except Exception:
