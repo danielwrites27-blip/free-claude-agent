@@ -1132,7 +1132,12 @@ class FreeAgent:
                 "SYNTHESIS:\n"
                 "After receiving tool results, reason about what you learned. "
                 "When you have enough information, synthesize all observations "
-                "into a clear, direct final answer."
+                "into a clear, direct final answer.\n\n"
+
+                "TOOL ENFORCEMENT:\n"
+                "If the user explicitly says 'Run this code', 'Calculate', 'Search for', "
+                "'Look up', or 'Find me', you MUST call the appropriate tool even if you "
+                "already know the answer. Never skip a tool call the user has explicitly requested.\n\n"
             )
 
         messages = [{"role": "system", "content": system_content}]
