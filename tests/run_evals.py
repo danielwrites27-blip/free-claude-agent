@@ -71,18 +71,17 @@ def load_agent():
 
 
 def run_agent(agent, prompt: str, timeout: int = 60) -> tuple[str, list[str]]:
-    """
-    Run one prompt through the agent. Returns (full_response, tools_called).
-    Captures which tools were invoked by monkey-patching _execute_tool_call.
-    """
+    from src.agent import FreeAgent
+    import re
+
     tools_called = []
-    original_execute = agent._execute_tool_call
+    original_execute = FreeAgent._execute_tool_call
 
-    def capturing_execute(tool_name, args):
+    def capturing_execute(self, tool_name, args):
         tools_called.append(tool_name)
-        return original_execute(tool_name, args)
+        return original_execute(self, tool_name, args)
 
-    agent._execute_tool_call = capturing_execute
+    FreeAgent._execute_tool_call = capturing_execute
 
     full_response = ""
     try:
@@ -91,16 +90,13 @@ def run_agent(agent, prompt: str, timeout: int = 60) -> tuple[str, list[str]]:
     except Exception as e:
         full_response = f"[Agent error: {e}]"
     finally:
-        agent._execute_tool_call = original_execute  # always restore
+        FreeAgent._execute_tool_call = original_execute  # always restore
 
-    # Secondary tool detection — parse streamed output for tools the
-    # monkey-patch missed (store_memory, recall_memory, fetch_url etc.)
-    import re
+    # Secondary detection — belt-and-suspenders
     streamed_tools = re.findall(r'Using tools:\s*([\w_]+)', full_response)
     tools_called = list(dict.fromkeys(tools_called + streamed_tools))
 
     return full_response.strip(), tools_called
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Hard grader (no API needed)
