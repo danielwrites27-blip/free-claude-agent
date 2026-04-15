@@ -1135,7 +1135,7 @@ class FreeAgent:
                 "into a clear, direct final answer.\n\n"
 
                 "TOOL ENFORCEMENT:\n"
-                "If the user explicitly says 'Run this code', 'Calculate', 'Search for', "
+                "If the user explicitly says 'Run this code', 'run it', 'debug it', 'Calculate', 'Search for', "
                 "'Look up', or 'Find me', you MUST call the appropriate tool even if you "
                 "already know the answer. Never skip a tool call the user has explicitly requested.\n\n"
             )
