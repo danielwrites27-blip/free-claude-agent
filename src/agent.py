@@ -1112,9 +1112,10 @@ class FreeAgent:
                 "summarize naturally without listing URLs unless asked. \n\n"
 
                 "PLANNING RULE:\n"
-                "Before calling any tool, state a brief plan: what you need to find "
-                "and which tools you will use, in what order. "
-                "Do not jump into tool calls without a plan.\n\n"
+                "Before calling ANY tool, you MUST write a line starting with 'Plan:' "
+                "followed by what you need to find and which tools you will use in what order. "
+                "Example: 'Plan: I will call web_search to find X, then calculate to compute Y.' "
+                "NEVER make a tool call without writing your Plan: line first.\n\n"
 
                 "TOOL DISCIPLINE:\n"
                 "Call only one tool per round — never batch multiple tools together. "
