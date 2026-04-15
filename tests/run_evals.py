@@ -93,6 +93,12 @@ def run_agent(agent, prompt: str, timeout: int = 60) -> tuple[str, list[str]]:
     finally:
         agent._execute_tool_call = original_execute  # always restore
 
+    # Secondary tool detection — parse streamed output for tools the
+    # monkey-patch missed (store_memory, recall_memory, fetch_url etc.)
+    import re
+    streamed_tools = re.findall(r'Using tools:\s*([\w_]+)', full_response)
+    tools_called = list(dict.fromkeys(tools_called + streamed_tools))
+
     return full_response.strip(), tools_called
 
 
@@ -127,11 +133,16 @@ def hard_grade(ev: dict, response: str, tools_called: list[str]) -> dict:
             "pass": tool_ok,
         }
 
-    # Keyword presence check
+    # Keyword presence check — normalise numbers before matching
+    # so "$10,000" matches keyword "$10000" and vice versa
+    def _normalise(s: str) -> str:
+        return re.sub(r'[\$,\s]', '', s.lower())
+
     lower_response = response.lower()
+    norm_response  = _normalise(response)
     kw_results = {}
     for kw in ev.get("expected_contains", []):
-        kw_results[kw] = kw.lower() in lower_response
+        kw_results[kw] = (kw.lower() in lower_response) or (_normalise(kw) in norm_response)
     results["keyword_check"] = {
         "keywords": kw_results,
         "pass": all(kw_results.values()) if kw_results else True,
