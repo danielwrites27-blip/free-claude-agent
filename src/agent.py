@@ -1138,6 +1138,12 @@ class FreeAgent:
                 "If the user explicitly says 'Run this code', 'Calculate', 'Search for', "
                 "'Look up', or 'Find me', you MUST call the appropriate tool even if you "
                 "already know the answer. Never skip a tool call the user has explicitly requested.\n\n"
+
+                "MEMORY TOOL RULE:\n"
+                "When the user says 'remember', 'store', or 'save' something, you MUST call store_memory. "
+                "When the user asks 'what do you know', 'do you remember', 'what is my', or 'what did I tell you', "
+                "you MUST call recall_memory before answering. "
+                "Never call web_search to answer questions about the user's personal preferences or past conversations.\n\n"
             )
 
         messages = [{"role": "system", "content": system_content}]
