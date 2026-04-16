@@ -1003,7 +1003,7 @@ class FreeAgent:
             "app.py", "agent.py", "caveman.py", "memory.py", "router.py",
         ]
 
-        triggered = any(word in prompt_lower for word in trigger_words)
+        triggered = any(word in prompt_lower for word in trigger_words) and "[no-context]" not in prompt_lower
         print(f"[MultiFileContext] Trigger detected: {triggered}", flush=True)
 
         if not triggered:
