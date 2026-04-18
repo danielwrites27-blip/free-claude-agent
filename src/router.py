@@ -40,7 +40,7 @@ OPENROUTER = "openrouter"
 TOGETHER = "together"
 
 # Models that support native function/tool calling
-# DeepSeek-R1 on Sambanova does NOT support tool calling
+# DeepSeek-V3.1 on Sambanova does NOT support tool calling in thinking mode
 TOOL_CAPABLE_MODELS = {
     "llama-3.3-70b-versatile",            # Groq — BROKEN for tool calling (XML bug)
     "llama-3.1-8b-instant",               # Groq — fallback tool calling model
@@ -112,9 +112,9 @@ class ModelRouter:
 
         Priority philosophy:
         - Simple -> 8B on Cerebras (fastest) -> 8B on Groq -> 8B on Sambanova
-        - Reasoning -> DeepSeek-R1 -> Nemotron-30B -> 70B Sambanova -> 70B Cerebras
+        - Reasoning -> DeepSeek-V3.1 -> Nemotron-30B -> 70B Sambanova -> 70B Cerebras
         - Complex -> same as reasoning
-        - Tool calling required -> skip DeepSeek-R1, use Qwen3 -> Nemotron -> Llama-70B
+        - Tool calling required -> skip DeepSeek-V3.1, use Qwen3 -> Nemotron -> Llama-70B
         """
         complexity = "reasoning" if force_reasoning else self.estimate_complexity(prompt)
 
@@ -125,7 +125,7 @@ class ModelRouter:
                 ("Meta-Llama-3.1-8B-Instruct",     SAMBANOVA),
             ],
             "reasoning": [
-                ("DeepSeek-R1",                    SAMBANOVA),
+                ("DeepSeek-V3.1",                  SAMBANOVA),
                 ("llama-3.3-70b-versatile",        GROQ),
                 ("nvidia/nemotron-3-nano-30b-a3b",  NVIDIA),
                 ("Meta-Llama-3.3-70B-Instruct",    SAMBANOVA),
@@ -134,7 +134,7 @@ class ModelRouter:
                 ("llama-3.1-8b-instant",           GROQ),
             ],
             "complex": [
-                ("DeepSeek-R1",                    SAMBANOVA),
+                ("DeepSeek-V3.1",                  SAMBANOVA),
                 ("llama-3.3-70b-versatile",        GROQ),
                 ("nvidia/nemotron-3-nano-30b-a3b",  NVIDIA),
                 ("Meta-Llama-3.3-70B-Instruct",    SAMBANOVA),
@@ -189,6 +189,6 @@ class ModelRouter:
         c = self.estimate_complexity(prompt)
         return {
             "simple":    "⚡ 8B",
-            "reasoning": "🧠 DeepSeek-R1",
-            "complex":   "🧠 DeepSeek-R1",
+            "reasoning": "🧠 DeepSeek-V3.1",
+            "complex":   "🧠 DeepSeek-V3.1",
         }[c]
