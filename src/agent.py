@@ -1309,7 +1309,7 @@ class FreeAgent:
         Main entry point (non-streaming).
 
         Normal mode:        Tool-capable model + native function calling.
-        Deep reasoning mode: DeepSeek-R1 + keyword trigger fallback.
+        Deep reasoning mode: DeepSeek-V3.1 + keyword trigger fallback.
         Memory is always consistent across mode switches.
         """
         self._reset_daily_if_needed()
@@ -1351,7 +1351,7 @@ class FreeAgent:
                     last_error = str(e)
                     continue
 
-        # ── DEEP REASONING MODE: DeepSeek-R1 + keyword fallback ──────────
+        # ── DEEP REASONING MODE: DeepSeek-V3.1 + keyword fallback ──────────
         else:
             model, provider = self.router.select_model(
                 prompt, self.available_models, force_reasoning=True
@@ -1360,7 +1360,7 @@ class FreeAgent:
             self._last_model_label = model_label
             self._last_provider = provider
 
-            # Keyword trigger fallback (DeepSeek-R1 has no tool calling)
+            # Keyword trigger fallback (DeepSeek-V3.1 has no tool calling in thinking mode)
             if any(t in prompt.lower() for t in _SEARCH_TRIGGERS):
                 search_result = self.tavily_search(prompt)
                 if search_result:
@@ -1417,7 +1417,7 @@ class FreeAgent:
         Streaming entry point.
 
         Normal mode:        Tool-capable model + native function calling (stream final answer).
-        Deep reasoning mode: DeepSeek-R1 + keyword trigger fallback (full streaming).
+        Deep reasoning mode: DeepSeek-V3.1 + keyword trigger fallback (full streaming).
         Memory is always consistent across mode switches.
         """
         self._reset_daily_if_needed()
@@ -1618,7 +1618,7 @@ class FreeAgent:
         if think_stripped:
             full_response = think_stripped
         else:
-            # DeepSeek-R1 put entire answer inside <think> — extract it
+            # DeepSeek-V3.1 may put entire answer inside <think> — extract it
             think_match = re.search(r'<think>(.*?)</think>', full_response, re.DOTALL)
             full_response = think_match.group(1).strip() if think_match else full_response
 
