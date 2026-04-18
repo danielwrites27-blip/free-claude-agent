@@ -457,7 +457,7 @@ class FreeAgent:
         if self.sambanova_client:
             self.available_models["Meta-Llama-3.1-8B-Instruct"] = {"provider": SAMBANOVA, "rpd": 10000}
             self.available_models["Meta-Llama-3.3-70B-Instruct"] = {"provider": SAMBANOVA, "rpd": 5000}
-            self.available_models["DeepSeek-R1"] = {"provider": SAMBANOVA, "rpd": 5000}
+            self.available_models["DeepSeek-V3.1"] = {"provider": SAMBANOVA, "rpd": 5000}
 
         if self.cerebras_client:
             self.available_models["llama3.1-8b"] = {"provider": CEREBRAS, "rpd": 50000}
@@ -1498,7 +1498,7 @@ class FreeAgent:
                 "llama-3.3-70b-versatile":          "🔥 70B",
                 "qwen-3-235b-a22b-instruct-2507":   "⚡ Qwen3",
                 "Meta-Llama-3.3-70B-Instruct":      "🔥 70B",
-                "DeepSeek-R1":                      "🧠 DeepSeek-R1",
+                "DeepSeek-V3.1":                    "🧠 DeepSeek-V3.1",
                 "nvidia/nemotron-3-nano-30b-a3b":   "⚡ Nemotron",
                 "zai-org/GLM-5.1-FP8":              "🧠 GLM-5.1 · modal",
                 "z-ai/glm-5.1":                     "🧠 GLM-5.1 · openrouter",
