@@ -1,6 +1,6 @@
 """
 Token-optimized, free-tier AI agent.
-Multi-provider: Groq + Sambanova + Cerebras (all free tier).
+Multi-provider: Groq + Sambanova + Cerebras + NVIDIA NIM + Modal (all free tier).
 Multi-turn conversation history, streaming, SQLite memory.
 Native function/tool calling with 6 tools:
   web_search, run_python, read_file, fetch_url, recall_memory, calculate
@@ -16,7 +16,7 @@ import tiktoken
 
 from .caveman import CAVEMAN_SYSTEM_PROMPT, compress_response
 from .memory import TokenEfficientMemory
-from .router import ModelRouter, GROQ, SAMBANOVA, CEREBRAS
+from .router import ModelRouter, GROQ, SAMBANOVA, CEREBRAS, NVIDIA, MODAL, MINIMAX
 
 # Max turns to keep in live conversation context (before summarizing to memory)
 MAX_HISTORY_TURNS = 12  # 12 pairs = 24 messages
@@ -288,6 +288,45 @@ class FreeAgent:
             except ImportError:
                 pass
 
+        # NVIDIA NIM (Nemotron-3-Nano-30B — tool calling fallback1)
+        nvidia_nemotron_key = os.getenv("NVIDIA_API_KEY_NEMOTRON")
+        self.nvidia_client = None
+        if nvidia_nemotron_key:
+            try:
+                from openai import OpenAI
+                self.nvidia_client = OpenAI(
+                    api_key=nvidia_nemotron_key,
+                    base_url="https://integrate.api.nvidia.com/v1"
+                )
+            except ImportError:
+                pass
+
+        # Modal (GLM-5.1-FP8 — primary coding + deep reasoning)
+        modal_key = os.getenv("GLM51_MODAL_KEY")
+        self.modal_client = None
+        if modal_key:
+            try:
+                from openai import OpenAI
+                self.modal_client = OpenAI(
+                    api_key=modal_key,
+                    base_url="https://api.us-west-2.modal.direct/v1"
+                )
+            except ImportError:
+                pass
+
+        # MiniMax M2.7 (via NVIDIA NIM — general reasoning, free after eval testing)
+        minimax_key = os.getenv("NVIDIA_API_KEY")
+        self.minimax_client = None
+        if minimax_key:
+            try:
+                from openai import OpenAI
+                self.minimax_client = OpenAI(
+                    api_key=minimax_key,
+                    base_url="https://integrate.api.nvidia.com/v1"
+                )
+            except ImportError:
+                pass
+
         # Tavily (web search — used in both tool calling and keyword fallback)
         self.tavily_key = os.getenv("TAVILY_API_KEY")
 
@@ -393,11 +432,20 @@ class FreeAgent:
         if self.sambanova_client:
             self.available_models["Meta-Llama-3.1-8B-Instruct"] = {"provider": SAMBANOVA, "rpd": 10000}
             self.available_models["Meta-Llama-3.3-70B-Instruct"] = {"provider": SAMBANOVA, "rpd": 5000}
-            self.available_models["DeepSeek-R1-0528"] = {"provider": SAMBANOVA, "rpd": 5000}
+            self.available_models["DeepSeek-R1"] = {"provider": SAMBANOVA, "rpd": 5000}
 
         if self.cerebras_client:
             self.available_models["llama3.1-8b"] = {"provider": CEREBRAS, "rpd": 50000}
             self.available_models["qwen-3-235b-a22b-instruct-2507"] = {"provider": CEREBRAS, "rpd": 50000}
+
+        if self.nvidia_client:
+            self.available_models["nvidia/nemotron-3-nano-30b-a3b"] = {"provider": NVIDIA, "rpd": 10000}
+
+        if self.modal_client:
+            self.available_models["zai-org/GLM-5.1-FP8"] = {"provider": MODAL, "rpd": 10000}
+
+        if self.minimax_client:
+            self.available_models["minimaxai/minimax-m2.7"] = {"provider": MINIMAX, "rpd": 10000}
 
     def _reset_daily_if_needed(self):
         now = datetime.now()
@@ -1192,6 +1240,18 @@ class FreeAgent:
             if not self.cerebras_client:
                 raise RuntimeError("Cerebras client not initialized")
             return self.cerebras_client.chat.completions.create(**kwargs)
+        elif provider == NVIDIA:
+            if not self.nvidia_client:
+                raise RuntimeError("NVIDIA client not initialized")
+            return self.nvidia_client.chat.completions.create(**kwargs)
+        elif provider == MODAL:
+            if not self.modal_client:
+                raise RuntimeError("Modal client not initialized")
+            return self.modal_client.chat.completions.create(**kwargs)
+        elif provider == MINIMAX:
+            if not self.minimax_client:
+                raise RuntimeError("MiniMax client not initialized")
+            return self.minimax_client.chat.completions.create(**kwargs)
         else:
             raise ValueError(f"Unknown provider: {provider}")
 
@@ -1238,6 +1298,7 @@ class FreeAgent:
             if provider != GROQ:
                 providers_to_try.append(("llama-3.3-70b-versatile", GROQ))
             providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
+            providers_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
@@ -1274,6 +1335,7 @@ class FreeAgent:
             if provider != GROQ:
                 providers_to_try.append(("llama-3.3-70b-versatile", GROQ))
             providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
+            providers_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
@@ -1396,11 +1458,14 @@ class FreeAgent:
             model, provider = self.router.select_tool_capable_model(prompt, self.available_models)
             self._last_provider = provider
             self._last_model_label = {
-                "llama-3.1-8b-instant": "⚡ 8B",
-                "llama-3.3-70b-versatile": "🔥 70B",
-                "qwen-3-235b-a22b-instruct-2507": "⚡ Qwen3",
-                "Meta-Llama-3.3-70B-Instruct": "🔥 70B",
-                "DeepSeek-R1-0528": "🧠 DeepSeek-R1",
+                "llama-3.1-8b-instant":            "⚡ 8B",
+                "llama-3.3-70b-versatile":          "🔥 70B",
+                "qwen-3-235b-a22b-instruct-2507":   "⚡ Qwen3",
+                "Meta-Llama-3.3-70B-Instruct":      "🔥 70B",
+                "DeepSeek-R1":                      "🧠 DeepSeek-R1",
+                "nvidia/nemotron-3-nano-30b-a3b":   "⚡ Nemotron",
+                "zai-org/GLM-5.1-FP8":              "🧠 GLM-5.1",
+                "minimaxai/minimax-m2.7":            "🔥 MiniMax",
             }.get(model, "⚡ 8B")
             used_provider = provider
             used_model = model
@@ -1409,6 +1474,7 @@ class FreeAgent:
             if provider != GROQ:
                 providers_to_try.append(("llama-3.3-70b-versatile", GROQ))
             providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
+            providers_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
@@ -1457,6 +1523,7 @@ class FreeAgent:
             if provider != GROQ:
                 providers_to_try.append(("llama-3.3-70b-versatile", GROQ))
             providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
+            providers_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
@@ -1585,6 +1652,12 @@ class FreeAgent:
             providers.append(SAMBANOVA)
         if self.cerebras_client:
             providers.append(CEREBRAS)
+        if self.nvidia_client:
+            providers.append(NVIDIA)
+        if self.modal_client:
+            providers.append(MODAL)
+        if self.minimax_client:
+            providers.append(MINIMAX)
         return {
             "tokens_used_today": self.tokens_used_today,
             "daily_limit": self.daily_token_limit,
