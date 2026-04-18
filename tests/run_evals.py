@@ -425,7 +425,7 @@ def compare_results(file_a: str, file_b: str):
 def main():
     parser = argparse.ArgumentParser(description="Free Claude Agent — Eval Runner")
     parser.add_argument("--category",  type=str, default=None,
-                        help="Run only this category: tool_use | memory | reasoning | planning")
+                        help="Run only this category: tool_use | memory | reasoning | planning | coding | judgment")
     parser.add_argument("--id",        type=str, default=None,
                         help="Run only a single eval by ID, e.g. tool_001")
     parser.add_argument("--no-judge",  action="store_true",
@@ -459,6 +459,8 @@ def main():
         "memory":    EVALS_DIR / "memory.json",
         "reasoning": EVALS_DIR / "reasoning.json",
         "planning":  EVALS_DIR / "planning.json",
+        "coding":    EVALS_DIR / "coding.json",
+        "judgment":  EVALS_DIR / "judgment.json",
     }
 
     all_evals = []
