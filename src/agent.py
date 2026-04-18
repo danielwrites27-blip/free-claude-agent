@@ -1543,7 +1543,7 @@ class FreeAgent:
             # _last_provider and _last_model_label updated inside synthesis loop if fallback triggered
             model_label = self._last_model_label
             used_provider = self._last_provider
-        # ── DEEP REASONING MODE: DeepSeek-R1 + keyword fallback ──────────
+        # ── DEEP REASONING MODE: DeepSeek-V3.1 + keyword fallback ──────────
         else:
             model, provider = self.router.select_model(
                 prompt, self.available_models, force_reasoning=True
