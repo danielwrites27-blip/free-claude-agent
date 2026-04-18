@@ -23,6 +23,8 @@ ModelName = Literal[
     "nvidia/nemotron-3-nano-30b-a3b",
     # Modal (GLM-5.1-FP8 — #1 SWE-Bench Pro, 754B MoE, 40B active, 200K context)
     "zai-org/GLM-5.1-FP8",
+    # OpenRouter / Together AI (GLM-5.1 — permanent fallback after Modal)
+    "z-ai/glm-5.1",
     # MiniMax M2.7 (via NVIDIA NIM — general reasoning)
     "minimaxai/minimax-m2.7",
 ]
@@ -34,6 +36,8 @@ CEREBRAS = "cerebras"
 NVIDIA = "nvidia"
 MODAL = "modal"
 MINIMAX = "minimax"
+OPENROUTER = "openrouter"
+TOGETHER = "together"
 
 # Models that support native function/tool calling
 # DeepSeek-R1 on Sambanova does NOT support tool calling
