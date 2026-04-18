@@ -16,7 +16,7 @@ import tiktoken
 
 from .caveman import CAVEMAN_SYSTEM_PROMPT, compress_response
 from .memory import TokenEfficientMemory
-from .router import ModelRouter, GROQ, SAMBANOVA, CEREBRAS, NVIDIA, MODAL, MINIMAX
+from .router import ModelRouter, GROQ, SAMBANOVA, CEREBRAS, NVIDIA, MODAL, MINIMAX, OPENROUTER, TOGETHER
 
 # Max turns to keep in live conversation context (before summarizing to memory)
 MAX_HISTORY_TURNS = 12  # 12 pairs = 24 messages
@@ -302,23 +302,39 @@ class FreeAgent:
                 pass
 
         # Modal (GLM-5.1-FP8 — primary coding + deep reasoning)
-        # Modal requires two-part auth: MODAL_TOKEN_ID + MODAL_TOKEN_SECRET
-        modal_token_id = os.getenv("MODAL_TOKEN_ID")
-        modal_token_secret = os.getenv("MODAL_TOKEN_SECRET")
+        # Uses modalresearch_ key as simple Bearer token (from modal.com/glm-5-endpoint)
+        modal_key = os.getenv("GLM51_MODAL_KEY")
         self.modal_client = None
-        if modal_token_id and modal_token_secret:
+        if modal_key:
             try:
-                import httpx
                 from openai import OpenAI
                 self.modal_client = OpenAI(
-                    api_key=modal_token_id,
-                    base_url="https://api.us-west-2.modal.direct/v1",
-                    http_client=httpx.Client(
-                        headers={
-                            "Modal-Key": modal_token_id,
-                            "Modal-Secret": modal_token_secret,
-                        }
-                    )
+                    api_key=modal_key,
+                    base_url="https://api.us-west-2.modal.direct/v1"
+                )
+            except ImportError:
+                pass
+        # OpenRouter (GLM-5.1 — permanent fallback after Modal, credits-based)
+        openrouter_key = os.getenv("OPENROUTER_API_KEY")
+        self.openrouter_glm_client = None
+        if openrouter_key:
+            try:
+                from openai import OpenAI
+                self.openrouter_glm_client = OpenAI(
+                    api_key=openrouter_key,
+                    base_url="https://openrouter.ai/api/v1"
+                )
+            except ImportError:
+                pass
+        # Together AI (GLM-5.1 — second permanent fallback, $25 free credits)
+        together_key = os.getenv("TOGETHER_API_KEY")
+        self.together_client = None
+        if together_key:
+            try:
+                from openai import OpenAI
+                self.together_client = OpenAI(
+                    api_key=together_key,
+                    base_url="https://api.together.xyz/v1"
                 )
             except ImportError:
                 pass
@@ -452,7 +468,10 @@ class FreeAgent:
 
         if self.modal_client:
             self.available_models["zai-org/GLM-5.1-FP8"] = {"provider": MODAL, "rpd": 10000}
-
+        if self.openrouter_glm_client:
+            self.available_models["z-ai/glm-5.1"] = {"provider": OPENROUTER, "rpd": 10000}
+        if self.together_client:
+            self.available_models["z-ai/glm-5.1-together"] = {"provider": TOGETHER, "rpd": 10000}
         if self.minimax_client:
             self.available_models["minimaxai/minimax-m2.7"] = {"provider": MINIMAX, "rpd": 10000}
 
@@ -1261,6 +1280,14 @@ class FreeAgent:
             if not self.minimax_client:
                 raise RuntimeError("MiniMax client not initialized")
             return self.minimax_client.chat.completions.create(**kwargs)
+        elif provider == OPENROUTER:
+            if not self.openrouter_glm_client:
+                raise RuntimeError("OpenRouter client not initialized")
+            return self.openrouter_glm_client.chat.completions.create(**kwargs)
+        elif provider == TOGETHER:
+            if not self.together_client:
+                raise RuntimeError("Together client not initialized")
+            return self.together_client.chat.completions.create(**kwargs)
         else:
             raise ValueError(f"Unknown provider: {provider}")
 
@@ -1473,7 +1500,9 @@ class FreeAgent:
                 "Meta-Llama-3.3-70B-Instruct":      "🔥 70B",
                 "DeepSeek-R1":                      "🧠 DeepSeek-R1",
                 "nvidia/nemotron-3-nano-30b-a3b":   "⚡ Nemotron",
-                "zai-org/GLM-5.1-FP8":              "🧠 GLM-5.1",
+                "zai-org/GLM-5.1-FP8":              "🧠 GLM-5.1 · modal",
+                "z-ai/glm-5.1":                     "🧠 GLM-5.1 · openrouter",
+                "z-ai/glm-5.1-together":             "🧠 GLM-5.1 · together",
                 "minimaxai/minimax-m2.7":            "🔥 MiniMax",
             }.get(model, "⚡ 8B")
             used_provider = provider
@@ -1665,6 +1694,10 @@ class FreeAgent:
             providers.append(NVIDIA)
         if self.modal_client:
             providers.append(MODAL)
+        if self.openrouter_glm_client:
+            providers.append(OPENROUTER)
+        if self.together_client:
+            providers.append(TOGETHER)
         if self.minimax_client:
             providers.append(MINIMAX)
         return {
