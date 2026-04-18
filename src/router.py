@@ -13,8 +13,8 @@ ModelName = Literal[
     # Sambanova (generous free tier, good for long context)
     "Meta-Llama-3.1-8B-Instruct",
     "Meta-Llama-3.3-70B-Instruct",
-    # Sambanova reasoning model (base DeepSeek-R1 671B — R1-0528 deprecated Mar 31 2026)
-    "DeepSeek-R1",
+    # SambaNova reasoning model (DeepSeek-V3.1 with hybrid thinking — R1 deprecated Apr 2026)
+    "DeepSeek-V3.1",
     # Cerebras (fastest inference, wafer-scale)
     "llama3.1-8b",
     "llama-3.3-70b",
