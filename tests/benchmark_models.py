@@ -161,7 +161,11 @@ REASONING_PROMPT = textwrap.dedent("""
     At what time do the trains meet? Show every step of your working.
 """).strip()
 # Correct answer: 11:20 AM
-REASONING_KEYWORDS = ["11:20", "11:20 am", "1 hour 20", "80 minutes", "1h 20", "11h20"]
+REASONING_KEYWORDS = [
+    "11:20", "11:20 am", "11:20am", "1 hour 20", "1h 20",
+    "80 minutes", "11h20", "11 hours 20", "twenty minutes past eleven",
+    "140 minutes", "2 hours 20",  # edge cases
+]
 
 CODING_PROMPT = textwrap.dedent("""
     The following Python function is supposed to return the nth Fibonacci number
