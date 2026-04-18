@@ -302,14 +302,23 @@ class FreeAgent:
                 pass
 
         # Modal (GLM-5.1-FP8 — primary coding + deep reasoning)
-        modal_key = os.getenv("GLM51_MODAL_KEY")
+        # Modal requires two-part auth: MODAL_TOKEN_ID + MODAL_TOKEN_SECRET
+        modal_token_id = os.getenv("MODAL_TOKEN_ID")
+        modal_token_secret = os.getenv("MODAL_TOKEN_SECRET")
         self.modal_client = None
-        if modal_key:
+        if modal_token_id and modal_token_secret:
             try:
+                import httpx
                 from openai import OpenAI
                 self.modal_client = OpenAI(
-                    api_key=modal_key,
-                    base_url="https://api.us-west-2.modal.direct/v1"
+                    api_key=modal_token_id,
+                    base_url="https://api.us-west-2.modal.direct/v1",
+                    http_client=httpx.Client(
+                        headers={
+                            "Modal-Key": modal_token_id,
+                            "Modal-Secret": modal_token_secret,
+                        }
+                    )
                 )
             except ImportError:
                 pass
