@@ -187,7 +187,7 @@ TOOL_DEFINITIONS = [
 ]
 
 # Keyword fallback triggers used ONLY in deep reasoning mode
-# (when DeepSeek-R1 is active and tool calling is not available)
+# (when DeepSeek-V3.1 is active and tool calling is not available)
 _SEARCH_TRIGGERS = [
     "search for", "look up", "find me", "what is the latest",
     "latest", "current", "news about", "who is", "what happened",
@@ -205,7 +205,7 @@ class FreeAgent:
     Modes:
     - Normal mode:       Tool-capable model (Groq 70B preferred).
                          Native function calling for all 6 tools.
-    - Deep reasoning:    DeepSeek-R1 on Sambanova.
+    - Deep reasoning:    DeepSeek-V3.1 on Sambanova.
                          Falls back to keyword triggers (no native tool calling).
                          Memory stays fully consistent across mode switches.
     """
