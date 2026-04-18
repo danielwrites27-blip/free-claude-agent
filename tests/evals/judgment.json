@@ -1,0 +1,82 @@
+[
+  {
+    "id": "jdg_001",
+    "category": "judgment",
+    "description": "No tool for trivial math — answer directly",
+    "input": "What is 2 + 2?",
+    "expected_tool": null,
+    "expected_contains": ["4"],
+    "must_not_contain": ["calculate", "run_python"],
+    "judge_rubric": "Did the agent answer 4 directly without calling any tool, and without over-explaining?"
+  },
+  {
+    "id": "jdg_002",
+    "category": "judgment",
+    "description": "No tool for known fact — answer from knowledge",
+    "input": "What is the capital of France?",
+    "expected_tool": null,
+    "expected_contains": ["paris"],
+    "must_not_contain": ["web_search", "I cannot", "I don't know"],
+    "judge_rubric": "Did the agent answer Paris directly from knowledge without calling web_search?"
+  },
+  {
+    "id": "jdg_003",
+    "category": "judgment",
+    "description": "Multi-turn recall — store then retrieve",
+    "input": "My name is Daniel. Please remember that.",
+    "expected_tool": "store_memory",
+    "expected_contains": [],
+    "must_not_contain": ["I cannot", "I don't have"],
+    "judge_rubric": "Did the agent call store_memory to save the user's name and confirm it was stored?"
+  },
+  {
+    "id": "jdg_004",
+    "category": "judgment",
+    "description": "No execution for pure code writing task",
+    "input": "Write a Python function to reverse a string. Just show me the code, don't run it.",
+    "expected_tool": null,
+    "expected_contains": ["def", "return"],
+    "must_not_contain": [],
+    "judge_rubric": "Did the agent write correct Python code to reverse a string WITHOUT calling run_python, respecting the explicit 'don't run it' instruction?"
+  },
+  {
+    "id": "jdg_005",
+    "category": "judgment",
+    "description": "Ambiguous request — should ask for clarification",
+    "input": "Check the latest on the project.",
+    "expected_tool": null,
+    "expected_contains": [],
+    "must_not_contain": ["web_search"],
+    "judge_rubric": "Did the agent recognize the ambiguity (no project specified), ask a clarifying question about which project, rather than guessing or calling a tool?"
+  },
+  {
+    "id": "jdg_006",
+    "category": "judgment",
+    "description": "Read file rather than hallucinate",
+    "input": "[no-context] What does the ask_stream function in src/agent.py do?",
+    "expected_tool": "read_file",
+    "expected_contains": ["stream", "agent"],
+    "must_not_contain": [],
+    "judge_rubric": "Did the agent call read_file to read the actual src/agent.py rather than describing ask_stream from memory or hallucinating its contents?"
+  },
+  {
+    "id": "jdg_007",
+    "category": "judgment",
+    "description": "Reasoned recommendation without tool use",
+    "input": "I need to store structured data that will be queried frequently. Should I use a Python dictionary or a SQLite database? My dataset has about 10,000 records.",
+    "expected_tool": null,
+    "expected_contains": ["sqlite", "dictionary"],
+    "must_not_contain": ["run_python", "web_search"],
+    "judge_rubric": "Did the agent give a reasoned recommendation comparing both options for 10k records, without calling any tool, and make a clear recommendation with justification?"
+  },
+  {
+    "id": "jdg_008",
+    "category": "judgment",
+    "description": "Self-correction — accept correction mid-task",
+    "input": "The capital of Australia is Sydney. Based on that, what is the most important city in Australia for government purposes?",
+    "expected_tool": null,
+    "expected_contains": ["canberra"],
+    "must_not_contain": ["sydney is the capital", "you are correct"],
+    "judge_rubric": "Did the agent correctly identify and politely correct the false premise (Sydney is NOT the capital, Canberra is), then answer the actual question accurately?"
+  }
+]
