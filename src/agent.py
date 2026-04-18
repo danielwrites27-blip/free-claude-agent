@@ -1514,8 +1514,11 @@ class FreeAgent:
             providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
             providers_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
+            if self.openrouter_glm_client:
+                providers_to_try.append(("z-ai/glm-5.1", OPENROUTER))
+            if self.together_client:
+                providers_to_try.append(("z-ai/glm-5.1-together", TOGETHER))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
-
             stream_gen = None
             for try_model, try_provider in providers_to_try:
                 try:
@@ -1563,8 +1566,13 @@ class FreeAgent:
             providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
             providers_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
+            if self.modal_client:
+                providers_to_try.append(("zai-org/GLM-5.1-FP8", MODAL))
+            if self.openrouter_glm_client:
+                providers_to_try.append(("z-ai/glm-5.1", OPENROUTER))
+            if self.together_client:
+                providers_to_try.append(("z-ai/glm-5.1-together", TOGETHER))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
-
             stream = None
             for try_model, try_provider in providers_to_try:
                 try:
