@@ -1,6 +1,6 @@
 """
 Smart model routing: Cheapest capable model for each query.
-Supports Groq, Sambanova, Cerebras — all free tier.
+Supports Groq, Sambanova, Cerebras, NVIDIA NIM — all free tier.
 """
 import re
 from typing import Literal, Dict, Tuple
@@ -13,20 +13,24 @@ ModelName = Literal[
     # Sambanova (generous free tier, good for long context)
     "Meta-Llama-3.1-8B-Instruct",
     "Meta-Llama-3.3-70B-Instruct",
+    # Sambanova reasoning model (base DeepSeek-R1 671B — R1-0528 deprecated Mar 31 2026)
+    "DeepSeek-R1",
     # Cerebras (fastest inference, wafer-scale)
     "llama3.1-8b",
     "llama-3.3-70b",
-    # Sambanova reasoning model
-    "DeepSeek-R1-0528",
+    "qwen-3-235b-a22b-instruct-2507",
+    # NVIDIA NIM (hybrid MoE, 3.5B active / 30B total, 1M context)
+    "nvidia/nemotron-3-nano-30b-a3b",
 ]
 
 # Provider name constants
 GROQ = "groq"
 SAMBANOVA = "sambanova"
 CEREBRAS = "cerebras"
+NVIDIA = "nvidia"
 
 # Models that support native function/tool calling
-# DeepSeek-R1 on Sambanova does NOT support tool calling yet
+# DeepSeek-R1 on Sambanova does NOT support tool calling
 TOOL_CAPABLE_MODELS = {
     "llama-3.3-70b-versatile",            # Groq — BROKEN for tool calling (XML bug)
     "llama-3.1-8b-instant",               # Groq — fallback tool calling model
@@ -34,6 +38,7 @@ TOOL_CAPABLE_MODELS = {
     "qwen-3-235b-a22b-instruct-2507",     # Cerebras — verified working
     "Meta-Llama-3.3-70B-Instruct",        # Sambanova
     "Meta-Llama-3.1-8B-Instruct",         # Sambanova
+    "nvidia/nemotron-3-nano-30b-a3b",     # NVIDIA NIM — S15 benchmark confirmed
 }
 
 
@@ -96,40 +101,40 @@ class ModelRouter:
         This is used in normal mode to ensure function calling works.
 
         Priority philosophy:
-        - Simple → 8B on Cerebras (fastest) → 8B on Groq → 8B on Sambanova
-        - Reasoning → DeepSeek-R1 → 70B on Groq → 70B Sambanova → 70B Cerebras
-        - Complex → same as reasoning
-        - Tool calling required → skip DeepSeek-R1, prefer Groq 70B
+        - Simple -> 8B on Cerebras (fastest) -> 8B on Groq -> 8B on Sambanova
+        - Reasoning -> DeepSeek-R1 -> Nemotron-30B -> 70B Sambanova -> 70B Cerebras
+        - Complex -> same as reasoning
+        - Tool calling required -> skip DeepSeek-R1, use Qwen3 -> Nemotron -> Llama-70B
         """
         complexity = "reasoning" if force_reasoning else self.estimate_complexity(prompt)
 
         priority_map = {
             "simple": [
-                ("llama3.1-8b",                  CEREBRAS),
-                ("llama-3.1-8b-instant",          GROQ),
-                ("Meta-Llama-3.1-8B-Instruct",    SAMBANOVA),
+                ("llama3.1-8b",                   CEREBRAS),
+                ("llama-3.1-8b-instant",           GROQ),
+                ("Meta-Llama-3.1-8B-Instruct",     SAMBANOVA),
             ],
             "reasoning": [
-                ("DeepSeek-R1-0528",              SAMBANOVA),
-                ("llama-3.3-70b-versatile",       GROQ),
-                ("Meta-Llama-3.3-70B-Instruct",   SAMBANOVA),
-                ("llama-3.3-70b",                 CEREBRAS),
-                ("llama3.1-8b",                   CEREBRAS),
-                ("llama-3.1-8b-instant",          GROQ),
+                ("DeepSeek-R1",                    SAMBANOVA),
+                ("llama-3.3-70b-versatile",        GROQ),
+                ("nvidia/nemotron-3-nano-30b-a3b",  NVIDIA),
+                ("Meta-Llama-3.3-70B-Instruct",    SAMBANOVA),
+                ("llama-3.3-70b",                  CEREBRAS),
+                ("llama3.1-8b",                    CEREBRAS),
+                ("llama-3.1-8b-instant",           GROQ),
             ],
             "complex": [
-                ("DeepSeek-R1-0528",              SAMBANOVA),
-                ("llama-3.3-70b-versatile",       GROQ),
-                ("Meta-Llama-3.3-70B-Instruct",   SAMBANOVA),
-                ("llama-3.3-70b",                 CEREBRAS),
-                ("llama3.1-8b",                   CEREBRAS),
-                ("llama-3.1-8b-instant",          GROQ),
+                ("DeepSeek-R1",                    SAMBANOVA),
+                ("llama-3.3-70b-versatile",        GROQ),
+                ("nvidia/nemotron-3-nano-30b-a3b",  NVIDIA),
+                ("Meta-Llama-3.3-70B-Instruct",    SAMBANOVA),
+                ("llama-3.3-70b",                  CEREBRAS),
+                ("llama3.1-8b",                    CEREBRAS),
+                ("llama-3.1-8b-instant",           GROQ),
             ],
         }
 
         for model, provider in priority_map.get(complexity, []):
-            if model not in available_models and model not in available_models:
-                continue
             if model not in available_models:
                 continue
             # If tool calling is required, skip non-capable models
@@ -148,14 +153,21 @@ class ModelRouter:
         """
         Shortcut: always returns a tool-capable model.
         Used in normal mode where tool calling must work.
-        Prefers Cerebras Qwen3 235B (best quality) → Groq 8B (fast fallback).
+
+        Chain (S15 benchmark verified):
+          Qwen3-235B (Cerebras)        — PRIMARY, best quality
+          Nemotron-3-Nano-30B (NVIDIA) — Fallback1, fast + reliable tool calling
+          Llama-3.3-70B (SambaNova)    — Fallback2
+          Llama-3.1-8B (SambaNova)     — Last resort
+          Llama-3.1-8B (Groq)          — Ultimate fallback (hardcoded below)
+
         Note: Groq 70B broken for tool calling (XML format bug — monitor for fix).
         """
         tool_priority = [
-            ("qwen-3-235b-a22b-instruct-2507", CEREBRAS),   # PRIMARY — best tool calling quality
-            ("llama-3.1-8b-instant",            GROQ),       # Fast fallback — Groq 70B broken
-            ("Meta-Llama-3.3-70B-Instruct",     SAMBANOVA),  # SambaNova fallback
-            ("Meta-Llama-3.1-8B-Instruct",      SAMBANOVA),  # SambaNova last resort
+            ("qwen-3-235b-a22b-instruct-2507",  CEREBRAS),  # PRIMARY — best tool calling quality
+            ("nvidia/nemotron-3-nano-30b-a3b",   NVIDIA),    # Fallback1 — S15: speed+tool+coding PASS
+            ("Meta-Llama-3.3-70B-Instruct",      SAMBANOVA), # Fallback2
+            ("Meta-Llama-3.1-8B-Instruct",       SAMBANOVA), # Last resort
         ]
         for model, provider in tool_priority:
             if model in available_models:
