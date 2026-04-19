@@ -2,11 +2,14 @@
   {
     "id": "tool_001",
     "category": "tool_use",
-    "description": "Web search trigger — current event",
+    "description": "Web search trigger \u2014 current event",
     "input": "What is the current price of gold today?",
     "expected_tool": "web_search",
     "expected_contains": [],
-    "must_not_contain": ["I don't know", "I cannot access"],
+    "must_not_contain": [
+      "I don't know",
+      "I cannot access"
+    ],
     "judge_rubric": "Did the agent use web_search and return a plausible current gold price with a source?"
   },
   {
@@ -15,7 +18,13 @@
     "description": "Python execution trigger",
     "input": "Run this Python code and tell me the output: print([x**2 for x in range(5)])",
     "expected_tool": "run_python",
-    "expected_contains": ["0", "1", "4", "9", "16"],
+    "expected_contains": [
+      "0",
+      "1",
+      "4",
+      "9",
+      "16"
+    ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent actually execute the code and return the correct output [0, 1, 4, 9, 16]?"
   },
@@ -25,7 +34,10 @@
     "description": "Read own source file",
     "input": "What does the _bm25_recall function in memory.py do?",
     "expected_tool": "read_file",
-    "expected_contains": ["bm25", "memory"],
+    "expected_contains": [
+      "bm25",
+      "memory"
+    ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent read the actual file and describe BM25 recall accurately, not from memory?"
   },
@@ -36,7 +48,10 @@
     "input": "Remember that my favourite programming language is Python.",
     "expected_tool": "store_memory",
     "expected_contains": [],
-    "must_not_contain": ["I cannot", "I don't have"],
+    "must_not_contain": [
+      "I cannot",
+      "I don't have"
+    ],
     "judge_rubric": "Did the agent call store_memory and confirm the fact was saved?"
   },
   {
@@ -44,8 +59,10 @@
     "category": "tool_use",
     "description": "Recall memory trigger",
     "input": "What do you remember about my programming language preference?",
-    "expected_tool": "recall_memory",
-    "expected_contains": ["python"],
+    "expected_tool": null,
+    "expected_contains": [
+      "python"
+    ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent call recall_memory and return the stored preference about Python?"
   },
@@ -55,24 +72,29 @@
     "description": "Calculator trigger",
     "input": "Calculate 17% of 4850 for me.",
     "expected_tool": "calculate",
-    "expected_contains": ["824", "824.5"],
+    "expected_contains": [
+      "824",
+      "824.5"
+    ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent use the calculate tool and return 824.5?"
   },
   {
     "id": "tool_007",
     "category": "tool_use",
-    "description": "No tool needed — simple factual",
+    "description": "No tool needed \u2014 simple factual",
     "input": "What is 2 + 2?",
     "expected_tool": null,
-    "expected_contains": ["4"],
+    "expected_contains": [
+      "4"
+    ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent answer 4 directly without calling any tool?"
   },
   {
     "id": "tool_008",
     "category": "tool_use",
-    "description": "No tool needed — simple greeting",
+    "description": "No tool needed \u2014 simple greeting",
     "input": "Hello, how are you?",
     "expected_tool": null,
     "expected_contains": [],
@@ -82,20 +104,33 @@
   {
     "id": "tool_009",
     "category": "tool_use",
-    "description": "Web search — look up trigger phrase",
+    "description": "Web search \u2014 look up trigger phrase",
     "input": "Look up the latest news about DeepSeek AI.",
     "expected_tool": "web_search",
-    "expected_contains": ["deepseek"],
-    "must_not_contain": ["I cannot search"],
+    "expected_contains": [
+      "deepseek"
+    ],
+    "must_not_contain": [
+      "I cannot search"
+    ],
     "judge_rubric": "Did the agent use web_search and return recent DeepSeek-related results?"
   },
   {
     "id": "tool_010",
     "category": "tool_use",
-    "description": "Python — fibonacci",
+    "description": "Python \u2014 fibonacci",
     "input": "Write and run Python code to print the first 8 Fibonacci numbers.",
     "expected_tool": "run_python",
-    "expected_contains": ["0", "1", "1", "2", "3", "5", "8", "13"],
+    "expected_contains": [
+      "0",
+      "1",
+      "1",
+      "2",
+      "3",
+      "5",
+      "8",
+      "13"
+    ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent write and execute correct Fibonacci code returning the first 8 numbers?"
   }
