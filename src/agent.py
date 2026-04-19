@@ -1513,10 +1513,65 @@ class FreeAgent:
                     else:
                         yield f"⚠️ {file_content}\n\n"
 
+        # ── REASONING-ONLY BYPASS: skip tool loop for pure knowledge queries ──
+        reasoning_only_triggers = [
+            "what does", "what is", "what are", "what was", "what were",
+            "who is", "who was", "who are", "who were",
+            "how does", "how do", "how did", "how is",
+            "why does", "why do", "why did", "why is",
+            "explain", "define", "describe", "tell me about",
+        ]
+        tool_override_triggers = [
+            "search", "look up", "find", "fetch", "calculate", "compute",
+            "run", "execute", "store", "remember", "recall", "retrieve",
+            "latest", "current", "today", "news", "price", "weather",
+            "read file", "open file", "write",
+        ]
+        lower_p = prompt.lower()
+        is_reasoning_only = (
+            any(lower_p.startswith(t) or lower_p.startswith("hey " + t) for t in reasoning_only_triggers)
+            and not any(t in lower_p for t in tool_override_triggers)
+            and len(prompt.split()) <= 25
+        )
+
         # ── NORMAL MODE: native tool calling (stream final answer) ────────
         memory_context = self._get_memory_context(prompt)
         messages = self._build_messages(prompt, memory_context)
         full_response = ""
+
+        if not self.deep_reasoning_mode and is_reasoning_only:
+            # Direct answer — no tool loop, no Plan: prefix
+            model, provider = self.router.select_tool_capable_model(prompt, self.available_models)
+            self._last_provider = provider
+            self._last_model_label = {
+                "llama-3.1-8b-instant":           "⚡ 8B",
+                "qwen-3-235b-a22b-instruct-2507":  "⚡ Qwen3",
+                "Meta-Llama-3.3-70B-Instruct":    "🔥 70B",
+                "nvidia/nemotron-3-nano-30b-a3b":  "⚡ Nemotron",
+                "z-ai/glm-5.1":                   "🧠 GLM-5.1 · openrouter",
+                "z-ai/glm-5.1-together":          "🧠 GLM-5.1 · together",
+            }.get(model, "⚡ 8B")
+            logger.info(f"[Provider] reasoning-only bypass model={model} provider={provider}")
+            bypass_ok = True
+            try:
+                stream = self._call_provider(
+                    model=model, provider=provider, messages=messages,
+                    max_tokens=max_output_tokens, stream=True,
+                )
+                for chunk in stream:
+                    delta = chunk.choices[0].delta.content or ""
+                    if delta:
+                        full_response += delta
+                        yield delta
+            except Exception as e:
+                logger.warning(f"[Provider] reasoning-only bypass failed: {e} — falling through")
+                bypass_ok = False
+            if bypass_ok:
+                model_label = self._last_model_label
+                used_provider = getattr(self, "_last_provider", provider)
+                yield f"\n\n`{model_label} · {used_provider}`"
+                self.tokens_used_today += self._count_tokens(full_response)
+                return
 
         if not self.deep_reasoning_mode:
             model, provider = self.router.select_tool_capable_model(prompt, self.available_models)
