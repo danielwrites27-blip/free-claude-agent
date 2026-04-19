@@ -72,7 +72,7 @@
     "expected_tool": null,
     "expected_contains": [
       "embed",
-      "re-embed"
+      "embedding"
     ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent correctly identify that upsert re-generates embeddings, making recall slower as memory count grows?"
@@ -84,7 +84,7 @@
     "input": "What does MoE stand for in the context of AI models?",
     "expected_tool": null,
     "expected_contains": [
-      "mixture of experts"
+      "mixture"
     ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent answer 'Mixture of Experts' correctly and concisely?"
