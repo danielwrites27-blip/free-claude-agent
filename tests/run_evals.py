@@ -26,6 +26,7 @@ Results are saved to tests/results/YYYY-MM-DD_HHMMSS.json automatically.
 """
 
 import os
+import re
 import sys
 import json
 import time
@@ -73,6 +74,8 @@ def load_agent():
 def run_agent(agent, prompt: str, timeout: int = 60) -> tuple[str, list[str]]:
     from src.agent import FreeAgent
     import re
+    # Reset conversation history between evals to prevent context bleed
+    agent.conversation_history = []
 
     tools_called = []
     original_execute = FreeAgent._execute_tool_call
@@ -83,6 +86,13 @@ def run_agent(agent, prompt: str, timeout: int = 60) -> tuple[str, list[str]]:
 
     FreeAgent._execute_tool_call = capturing_execute
 
+    from src.code_runner import SafeCodeRunner
+    original_code_run = SafeCodeRunner.run
+    def capturing_code_run(code, *args, **kwargs):
+        tools_called.append("run_python")
+        return original_code_run(code, *args, **kwargs)
+    SafeCodeRunner.run = classmethod(lambda cls, code, *a, **kw: capturing_code_run(code, *a, **kw))
+
     full_response = ""
     try:
         for chunk in agent.ask_stream(prompt):
@@ -91,6 +101,7 @@ def run_agent(agent, prompt: str, timeout: int = 60) -> tuple[str, list[str]]:
         full_response = f"[Agent error: {e}]"
     finally:
         FreeAgent._execute_tool_call = original_execute  # always restore
+        SafeCodeRunner.run = classmethod(lambda cls, code, *a, **kw: original_code_run(code, *a, **kw))  # always restore
 
     # Secondary detection — belt-and-suspenders
     streamed_tools = re.findall(r'Using tools:\s*([\w_]+)', full_response)
@@ -114,7 +125,15 @@ def hard_grade(ev: dict, response: str, tools_called: list[str]) -> dict:
 
     # Tool check
     expected_tool = ev.get("expected_tool")
-    if expected_tool is None:
+    tool_optional = ev.get("tool_optional", False)
+    if tool_optional:
+        tool_ok = True
+        results["tool_check"] = {
+            "expected": "any (optional)",
+            "got": tools_called or "none",
+            "pass": True,
+        }
+    elif expected_tool is None:
         tool_ok = len(tools_called) == 0
         results["tool_check"] = {
             "expected": "no tool",

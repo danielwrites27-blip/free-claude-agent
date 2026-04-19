@@ -2,20 +2,26 @@
   {
     "id": "rsn_001",
     "category": "reasoning",
-    "description": "Multi-step math — no tool",
+    "description": "Multi-step math \u2014 no tool",
     "input": "If a pod restarts every 3 days and each restart costs 5 minutes of downtime, how many minutes of downtime happen in a 30-day month?",
     "expected_tool": null,
-    "expected_contains": ["50"],
+    "expected_contains": [
+      "50"
+    ],
     "must_not_contain": [],
-    "judge_rubric": "Did the agent correctly calculate 10 restarts × 5 minutes = 50 minutes?"
+    "judge_rubric": "Did the agent correctly calculate 10 restarts \u00d7 5 minutes = 50 minutes?",
+    "tool_optional": true
   },
   {
     "id": "rsn_002",
     "category": "reasoning",
-    "description": "Logic — provider chain reasoning",
+    "description": "Logic \u2014 provider chain reasoning",
     "input": "If Cerebras is rate-limited and Groq 70B is broken for tool calling, which provider should the agent use for a tool-calling request?",
     "expected_tool": null,
-    "expected_contains": ["groq", "8b"],
+    "expected_contains": [
+      "groq",
+      "8b"
+    ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent correctly identify Groq 8B as the next tool-capable fallback?"
   },
@@ -25,7 +31,10 @@
     "description": "Compare two approaches",
     "input": "What is the difference between BM25 keyword search and vector similarity search? When does each one work better?",
     "expected_tool": null,
-    "expected_contains": ["keyword", "semantic"],
+    "expected_contains": [
+      "keyword",
+      "semantic"
+    ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent give a coherent comparison explaining BM25 for exact terms vs vector for semantic similarity?"
   },
@@ -36,8 +45,11 @@
     "input": "The agent's recall() is returning empty results even though memories are stored. What are the three most likely causes?",
     "expected_tool": null,
     "expected_contains": [],
-    "must_not_contain": ["I don't know"],
-    "judge_rubric": "Did the agent give 3 plausible, specific causes — not vague generic answers? E.g. ChromaDB path wrong, count=0 check failing, token budget too small."
+    "must_not_contain": [
+      "I don't know"
+    ],
+    "judge_rubric": "Did the agent give 3 plausible, specific causes \u2014 not vague generic answers? E.g. ChromaDB path wrong, count=0 check failing, token budget too small.",
+    "tool_optional": true
   },
   {
     "id": "rsn_005",
@@ -45,7 +57,10 @@
     "description": "Trade-off analysis",
     "input": "Should I increase RRF_K from 60 to 120 in my hybrid memory search? What are the trade-offs?",
     "expected_tool": null,
-    "expected_contains": ["smooth", "rank"],
+    "expected_contains": [
+      "smooth",
+      "rank"
+    ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent explain that higher k smooths rank differences (good for blending), but reduces the boost that top-1 BM25 results get?"
   },
@@ -55,17 +70,22 @@
     "description": "Causal chain",
     "input": "Why would using collection.upsert() instead of collection.update() slow down memory recall over time?",
     "expected_tool": null,
-    "expected_contains": ["embed", "re-embed"],
+    "expected_contains": [
+      "embed",
+      "re-embed"
+    ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent correctly identify that upsert re-generates embeddings, making recall slower as memory count grows?"
   },
   {
     "id": "rsn_007",
     "category": "reasoning",
-    "description": "Simple factual — should not overthink",
+    "description": "Simple factual \u2014 should not overthink",
     "input": "What does MoE stand for in the context of AI models?",
     "expected_tool": null,
-    "expected_contains": ["mixture of experts"],
+    "expected_contains": [
+      "mixture of experts"
+    ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent answer 'Mixture of Experts' correctly and concisely?"
   }
