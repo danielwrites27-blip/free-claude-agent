@@ -8,8 +8,11 @@ Native function/tool calling with 6 tools:
 import os
 import re
 import json
+import logging
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Generator
+
+logger = logging.getLogger("agent")
 
 from groq import Groq, RateLimitError as GroqRateLimitError
 import tiktoken
@@ -873,6 +876,13 @@ class FreeAgent:
             # Enforce one tool per round — take only the first tool call
             tool_calls_this_round = message.tool_calls[:1]
             tool_names = [tc.function.name for tc in tool_calls_this_round]
+            # pln_002: enforce Plan: prefix before first tool call
+            if round_num == 0:
+                plan_text = (message.content or "").strip()
+                if not plan_text.lower().startswith("plan:"):
+                    plan_text = f"Plan: {plan_text}" if plan_text else "Plan: Using tools to answer."
+                yield f"**{plan_text}**\n\n"
+                logger.info(f"[Plan] round=0 tools={tool_names}")
             yield f"\n\n🔧 *Using tools: {', '.join(tool_names)}...*\n\n"
             # Append assistant message with tool_calls
             current_messages.append({
@@ -1493,6 +1503,7 @@ class FreeAgent:
         if not self.deep_reasoning_mode:
             model, provider = self.router.select_tool_capable_model(prompt, self.available_models)
             self._last_provider = provider
+            logger.info(f"[Provider] selected model={model} provider={provider}")
             self._last_model_label = {
                 "llama-3.1-8b-instant":            "⚡ 8B",
                 "llama-3.3-70b-versatile":          "🔥 70B",
@@ -1621,53 +1632,6 @@ class FreeAgent:
             # DeepSeek-V3.1 may put entire answer inside <think> — extract it
             think_match = re.search(r'<think>(.*?)</think>', full_response, re.DOTALL)
             full_response = think_match.group(1).strip() if think_match else full_response
-
-        code_matches = re.findall(r'```python\s*(.*?)```', full_response, re.DOTALL)
-        if code_matches and any(w in prompt.lower() for w in [
-            "write", "create", "build", "code", "script", "function",
-            "implement", "calculate", "compute", "solve", "run"
-        ]):
-            code = "\n\n".join(block.strip() for block in code_matches)
-            from src.code_runner import SafeCodeRunner
-            run_result = SafeCodeRunner.run(code)
-
-            if run_result['success'] and run_result.get('output'):
-                note = f"\n\n✅ **Code executed** ({run_result['execution_time_ms']}ms):\n```\n{run_result['output']}\n```"
-                full_response += note
-                yield note
-
-            elif not run_result['success']:
-                error = run_result['error']
-                yield f"\n\n⚠️ **Code error, fixing...**\n```\n{error}\n```\n\n"
-
-                fix_messages = self._build_messages(
-                    f"Fix this Python error:\n{error}\n\nCode:\n```python\n{code}\n```\n\nReturn only corrected code in a ```python block.",
-                    ""
-                )
-                fix_model, fix_provider = self.router.select_tool_capable_model(prompt, self.available_models)
-                try:
-                    fix_stream = self._call_provider(
-                        model=fix_model, provider=fix_provider,
-                        messages=fix_messages, max_tokens=1024, stream=True,
-                    )
-                    fix_response = ""
-                    for chunk in fix_stream:
-                        delta = chunk.choices[0].delta
-                        if delta and delta.content:
-                            fix_response += delta.content
-                            yield delta.content
-
-                    fix_match = re.search(r'```python\s*(.*?)```', fix_response, re.DOTALL)
-                    if fix_match:
-                        fix_run = SafeCodeRunner.run(fix_match.group(1).strip())
-                        if fix_run['success'] and fix_run.get('output'):
-                            fix_note = f"\n\n✅ **Fixed & executed** ({fix_run['execution_time_ms']}ms):\n```\n{fix_run['output']}\n```"
-                            full_response += fix_note
-                            yield fix_note
-                        elif not fix_run['success']:
-                            yield f"\n\n❌ **Auto-fix failed:** `{fix_run['error'][:200]}`"
-                except Exception as e:
-                    yield f"\n\n❌ **Fix attempt failed:** `{str(e)[:150]}`"
 
         # ── FINALIZE ──────────────────────────────────────────────────────
         if self.caveman_mode:
