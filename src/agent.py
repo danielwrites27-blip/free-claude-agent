@@ -568,6 +568,7 @@ class FreeAgent:
         Returns string result to feed back to the model.
         """
         print(f"[ToolCall] {tool_name}({json.dumps(tool_args, ensure_ascii=False)[:120]})", flush=True)
+        logger.info(f"[Tool] {tool_name} args={json.dumps(tool_args, ensure_ascii=False)[:120]}")
 
         if tool_name == "web_search":
             return self._tool_web_search(tool_args.get("query", ""))
@@ -694,7 +695,7 @@ class FreeAgent:
                     break
                 except Exception as e:
                     err = str(e).lower()
-                    if isinstance(e, GroqRateLimitError) or "429" in err or "rate_limit" in err or "tool_use_failed" in err or "failed_generation" in err or "413" in err or "request too large" in err or "tokens per minute" in err:
+                    if isinstance(e, GroqRateLimitError) or "429" in err or "rate_limit" in err or "rate limit" in err or "exceed" in err or "tool_use_failed" in err or "failed_generation" in err or "413" in err or "request too large" in err or "tokens per minute" in err:
                         continue
                     raise
             if response is None:
@@ -817,7 +818,7 @@ class FreeAgent:
                     break
                 except Exception as e:
                     err = str(e).lower()
-                    if isinstance(e, GroqRateLimitError) or "429" in err or "rate_limit" in err or "tool_use_failed" in err or "failed_generation" in err or "413" in err or "request too large" in err or "tokens per minute" in err:
+                    if isinstance(e, GroqRateLimitError) or "429" in err or "rate_limit" in err or "rate limit" in err or "exceed" in err or "tool_use_failed" in err or "failed_generation" in err or "413" in err or "request too large" in err or "tokens per minute" in err:
                         continue
                     raise
             if response is None:
@@ -868,7 +869,7 @@ class FreeAgent:
                             break
                         except Exception as e:
                             err = str(e).lower()
-                            if isinstance(e, GroqRateLimitError) or "429" in err or "rate_limit" in err or "413" in err or "request too large" in err or "tokens per minute" in err:
+                            if isinstance(e, GroqRateLimitError) or "429" in err or "rate_limit" in err or "rate limit" in err or "exceed" in err or "413" in err or "request too large" in err or "tokens per minute" in err:
                                 continue
                             raise
                     return
@@ -977,7 +978,7 @@ class FreeAgent:
                 break
             except Exception as e:
                 err = str(e).lower()
-                if isinstance(e, GroqRateLimitError) or "429" in err or "rate_limit" in err or "413" in err or "request too large" in err or "tokens per minute" in err:
+                if isinstance(e, GroqRateLimitError) or "429" in err or "rate_limit" in err or "rate limit" in err or "exceed" in err or "413" in err or "request too large" in err or "tokens per minute" in err:
                     continue
                 raise
 
@@ -1224,6 +1225,11 @@ class FreeAgent:
                 "If the user explicitly says 'Run this code', 'run it', 'debug it', 'Calculate', 'Search for', "
                 "'Look up', or 'Find me', you MUST call the appropriate tool even if you "
                 "already know the answer. Never skip a tool call the user has explicitly requested.\n\n"
+                "MEMORY TOOL RULE:\n"
+                "When the user says 'remember', 'store', or 'save' something, you MUST call store_memory. "
+                "When the user asks 'what do you know', 'do you remember', 'what is my', or 'what did I tell you', "
+                "you MUST call recall_memory before answering. "
+                "Never call web_search to answer questions about the user's personal preferences or past conversations.\n\n"
             )
 
         messages = [{"role": "system", "content": system_content}]
