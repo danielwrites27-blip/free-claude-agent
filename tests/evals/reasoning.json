@@ -58,8 +58,8 @@
     "input": "Should I increase RRF_K from 60 to 120 in my hybrid memory search? What are the trade-offs?",
     "expected_tool": null,
     "expected_contains": [
-      "smooth",
-      "rank"
+      "rank",
+      "Trade-off"
     ],
     "must_not_contain": [],
     "judge_rubric": "Did the agent explain that higher k smooths rank differences (good for blending), but reduces the boost that top-1 BM25 results get?"

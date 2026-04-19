@@ -1537,6 +1537,19 @@ class FreeAgent:
         # ── NORMAL MODE: native tool calling (stream final answer) ────────
         memory_context = self._get_memory_context(prompt)
         messages = self._build_messages(prompt, memory_context)
+        has_file_context = any(
+            "END PROJECT CONTEXT" in m.get("content", "")
+            for m in messages if m.get("role") == "system"
+        )
+        if has_file_context:
+            messages.append({
+                "role": "system",
+                "content": (
+                    "The project source files have already been injected above. "
+                    "Answer directly from that context. "
+                    "Do NOT call web_search or recall_memory — the information is already available."
+                )
+            })
         full_response = ""
 
         if not self.deep_reasoning_mode and is_reasoning_only:
