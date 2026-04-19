@@ -612,6 +612,8 @@ class FreeAgent:
         Returns improved answer if issues found, original answer otherwise.
         Adds ~1 API call latency only on tool-using queries.
         """
+        if len(answer.strip()) < 50:
+            return answer  # too short to review meaningfully
         try:
             review_messages = [
                 {
@@ -675,7 +677,12 @@ class FreeAgent:
         if model != "llama-3.1-8b-instant":
             tool_models_to_try.append(("llama-3.1-8b-instant", GROQ))
         tool_models_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
+        tool_models_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
         tool_models_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
+        if self.openrouter_glm_client:
+            tool_models_to_try.append(("z-ai/glm-5.1", OPENROUTER))
+        if self.together_client:
+            tool_models_to_try.append(("z-ai/glm-5.1-together", TOGETHER))
 
         for round_num in range(MAX_TOOL_ROUNDS):
             # Non-streaming call to check for tool use — with rate-limit fallback
@@ -799,7 +806,12 @@ class FreeAgent:
         if model != "llama-3.1-8b-instant":
             tool_models_to_try.append(("llama-3.1-8b-instant", GROQ))
         tool_models_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
+        tool_models_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
         tool_models_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
+        if self.openrouter_glm_client:
+            tool_models_to_try.append(("z-ai/glm-5.1", OPENROUTER))
+        if self.together_client:
+            tool_models_to_try.append(("z-ai/glm-5.1-together", TOGETHER))
 
         for round_num in range(MAX_TOOL_ROUNDS):
             response = None
