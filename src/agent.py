@@ -658,6 +658,7 @@ class FreeAgent:
         provider: str,
         max_output_tokens: int,
         stream: bool = False,
+        is_coding_task: bool = False,
     ):
         """
         Runs the full agentic tool-calling loop (non-streaming).
@@ -683,6 +684,12 @@ class FreeAgent:
             tool_models_to_try.append(("z-ai/glm-5.1", OPENROUTER))
         if self.together_client:
             tool_models_to_try.append(("zai-org/GLM-5.1", TOGETHER))
+        # ── CODING TASK: promote GLM-5.1 to first fallback position ──
+        if is_coding_task and self.openrouter_glm_client:
+            glm_entry = ("z-ai/glm-5.1", OPENROUTER)
+            tool_models_to_try = [tool_models_to_try[0], glm_entry] + [
+                m for m in tool_models_to_try[1:] if m != glm_entry
+            ]
 
         for round_num in range(MAX_TOOL_ROUNDS):
             # Non-streaming call to check for tool use — with rate-limit fallback
@@ -794,6 +801,7 @@ class FreeAgent:
         model: str,
         provider: str,
         max_output_tokens: int,
+        is_coding_task: bool = False,
     ) -> Generator[str, None, None]:
         """
         Streaming tool loop with rate-limit fallback.
@@ -812,6 +820,12 @@ class FreeAgent:
             tool_models_to_try.append(("z-ai/glm-5.1", OPENROUTER))
         if self.together_client:
             tool_models_to_try.append(("zai-org/GLM-5.1", TOGETHER))
+        # ── CODING TASK: promote GLM-5.1 to first fallback position ──
+        if is_coding_task and self.openrouter_glm_client:
+            glm_entry = ("z-ai/glm-5.1", OPENROUTER)
+            tool_models_to_try = [tool_models_to_try[0], glm_entry] + [
+                m for m in tool_models_to_try[1:] if m != glm_entry
+            ]
 
         for round_num in range(MAX_TOOL_ROUNDS):
             response = None
@@ -1373,6 +1387,7 @@ class FreeAgent:
                         model=try_model,
                         provider=try_provider,
                         max_output_tokens=max_output_tokens,
+                        is_coding_task=(has_code_block or has_implement),
                     )
                     break
                 except Exception as e:
@@ -1641,6 +1656,7 @@ class FreeAgent:
                         model=try_model,
                         provider=try_provider,
                         max_output_tokens=max_output_tokens,
+                        is_coding_task=(has_code_block or has_implement),
                     )
                     used_provider = try_provider
                     used_model = try_model
