@@ -19,7 +19,7 @@ import tiktoken
 
 from .caveman import CAVEMAN_SYSTEM_PROMPT, compress_response
 from .memory import TokenEfficientMemory
-from .router import ModelRouter, GROQ, SAMBANOVA, CEREBRAS, NVIDIA, MODAL, MINIMAX, OPENROUTER, TOGETHER
+from .router import ModelRouter, GROQ, SAMBANOVA, CEREBRAS, NVIDIA, MODAL, MINIMAX, OPENROUTER, TOGETHER, CLOUDFLARE
 
 # Max turns to keep in live conversation context (before summarizing to memory)
 MAX_HISTORY_TURNS = 12  # 12 pairs = 24 messages
@@ -304,6 +304,14 @@ class FreeAgent:
             except ImportError:
                 pass
 
+        # Cloudflare Workers AI (Nemotron-3-120B — strong coding fallback)
+        cf_token = os.getenv("CLOUDFLARE_API_TOKEN")
+        cf_account = os.getenv("CLOUDFLARE_ACCOUNT_ID")
+        self.cloudflare_token = None
+        self.cloudflare_account_id = None
+        if cf_token and cf_account:
+            self.cloudflare_token = cf_token
+            self.cloudflare_account_id = cf_account
         # Modal (GLM-5.1-FP8 — primary coding + deep reasoning)
         # Uses modalresearch_ key as simple Bearer token (from modal.com/glm-5-endpoint)
         modal_key = os.getenv("GLM51_MODAL_KEY")
@@ -468,6 +476,8 @@ class FreeAgent:
 
         if self.nvidia_client:
             self.available_models["nvidia/nemotron-3-nano-30b-a3b"] = {"provider": NVIDIA, "rpd": 10000}
+        if self.cloudflare_token:
+            self.available_models["@cf/nvidia/nemotron-3-120b-a12b"] = {"provider": CLOUDFLARE, "rpd": 100000}
 
         if self.modal_client:
             self.available_models["zai-org/GLM-5.1-FP8"] = {"provider": MODAL, "rpd": 10000}
@@ -685,6 +695,8 @@ class FreeAgent:
         if self.together_client:
             tool_models_to_try.append(("zai-org/GLM-5.1", TOGETHER))
         # ── CODING TASK: promote GLM-5.1 to first fallback position ──
+        if self.cloudflare_token:
+            tool_models_to_try.append(("@cf/nvidia/nemotron-3-120b-a12b", CLOUDFLARE))
         if is_coding_task and self.openrouter_glm_client:
             glm_entry = ("z-ai/glm-5.1", OPENROUTER)
             tool_models_to_try = [tool_models_to_try[0], glm_entry] + [
@@ -821,6 +833,8 @@ class FreeAgent:
         if self.together_client:
             tool_models_to_try.append(("zai-org/GLM-5.1", TOGETHER))
         # ── CODING TASK: promote GLM-5.1 to first fallback position ──
+        if self.cloudflare_token:
+            tool_models_to_try.append(("@cf/nvidia/nemotron-3-120b-a12b", CLOUDFLARE))
         if is_coding_task and self.openrouter_glm_client:
             glm_entry = ("z-ai/glm-5.1", OPENROUTER)
             tool_models_to_try = [tool_models_to_try[0], glm_entry] + [
@@ -1330,6 +1344,50 @@ class FreeAgent:
             if not self.together_client:
                 raise RuntimeError("Together client not initialized")
             return self.together_client.chat.completions.create(**kwargs)
+        elif provider == CLOUDFLARE:
+            if not self.cloudflare_token:
+                raise RuntimeError("Cloudflare client not initialized")
+            import requests as _requests
+            from types import SimpleNamespace
+            cf_url = f"https://api.cloudflare.com/client/v4/accounts/{self.cloudflare_account_id}/ai/run/{kwargs['model']}"
+            cf_payload = {"messages": kwargs["messages"], "max_tokens": kwargs.get("max_tokens", 1024)}
+            if kwargs.get("tools"):
+                cf_payload["tools"] = kwargs["tools"]
+            if kwargs.get("tool_choice"):
+                cf_payload["tool_choice"] = kwargs["tool_choice"]
+            cf_r = _requests.post(
+                cf_url,
+                headers={"Authorization": f"Bearer {self.cloudflare_token}", "Content-Type": "application/json"},
+                json=cf_payload,
+                timeout=60
+            )
+            cf_data = cf_r.json()
+            if not cf_data.get("success"):
+                raise RuntimeError(f"Cloudflare error: {cf_data.get('errors')}")
+            # Wrap in OpenAI-compatible namespace
+            cf_choice = cf_data["result"]["choices"][0]
+            cf_msg = cf_choice["message"]
+            tool_calls = cf_msg.get("tool_calls") or []
+            parsed_tools = []
+            for tc in tool_calls:
+                fn = SimpleNamespace(name=tc["function"]["name"], arguments=tc["function"]["arguments"])
+                parsed_tools.append(SimpleNamespace(id=tc["id"], type="function", function=fn))
+            message = SimpleNamespace(
+                role=cf_msg.get("role", "assistant"),
+                content=cf_msg.get("content") or "",
+                tool_calls=parsed_tools or None
+            )
+            choice = SimpleNamespace(
+                message=message,
+                finish_reason=cf_choice.get("finish_reason", "stop")
+            )
+            usage = cf_data["result"].get("usage", {})
+            usage_ns = SimpleNamespace(
+                prompt_tokens=usage.get("prompt_tokens", 0),
+                completion_tokens=usage.get("completion_tokens", 0),
+                total_tokens=usage.get("total_tokens", 0)
+            )
+            return SimpleNamespace(choices=[choice], usage=usage_ns, model=kwargs["model"])
         else:
             raise ValueError(f"Unknown provider: {provider}")
 
@@ -1378,6 +1436,8 @@ class FreeAgent:
             providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
             providers_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
+            if self.cloudflare_token:
+                providers_to_try.append(("@cf/nvidia/nemotron-3-120b-a12b", CLOUDFLARE))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
             for try_model, try_provider in providers_to_try:
@@ -1416,6 +1476,8 @@ class FreeAgent:
             providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
             providers_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
+            if self.cloudflare_token:
+                providers_to_try.append(("@cf/nvidia/nemotron-3-120b-a12b", CLOUDFLARE))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
 
             for try_model, try_provider in providers_to_try:
@@ -1595,6 +1657,7 @@ class FreeAgent:
                 "nvidia/nemotron-3-nano-30b-a3b":  "⚡ Nemotron",
                 "z-ai/glm-5.1":                   "🧠 GLM-5.1 · openrouter",
                 "zai-org/GLM-5.1":          "🧠 GLM-5.1 · together",
+                "@cf/nvidia/nemotron-3-120b-a12b": "🧠 Nemotron-120B · cloudflare",
             }.get(model, "⚡ 8B")
             logger.info(f"[Provider] reasoning-only bypass model={model} provider={provider}")
             bypass_ok = True
@@ -1643,6 +1706,8 @@ class FreeAgent:
             providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
             providers_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
+            if self.cloudflare_token:
+                providers_to_try.append(("@cf/nvidia/nemotron-3-120b-a12b", CLOUDFLARE))
             if self.openrouter_glm_client:
                 providers_to_try.append(("z-ai/glm-5.1", OPENROUTER))
             if self.together_client:
@@ -1696,6 +1761,8 @@ class FreeAgent:
             providers_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
             providers_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
             providers_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
+            if self.cloudflare_token:
+                providers_to_try.append(("@cf/nvidia/nemotron-3-120b-a12b", CLOUDFLARE))
             if self.modal_client:
                 providers_to_try.append(("zai-org/GLM-5.1-FP8", MODAL))
             if self.openrouter_glm_client:

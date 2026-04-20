@@ -38,6 +38,7 @@ MODAL = "modal"
 MINIMAX = "minimax"
 OPENROUTER = "openrouter"
 TOGETHER = "together"
+CLOUDFLARE = "cloudflare"
 
 # Models that support native function/tool calling
 # DeepSeek-V3.1 on Sambanova does NOT support tool calling in thinking mode
