@@ -1550,6 +1550,23 @@ class FreeAgent:
                     "Do NOT call web_search or recall_memory — the information is already available."
                 )
             })
+        # ── CODING TASK NUDGE: force run_python when prompt has code + run instruction ──
+        has_code_block = any(marker in prompt for marker in ["def ", "class ", "import ", "```"])
+        has_implement = any(t in prompt.lower() for t in ["implement ", "implement a", "implement an"])
+        has_run_instruction = any(t in prompt.lower() for t in [
+            "run it", "run this", "run a ", "run the", "run your",
+            "execute it", "print the result", "print results", "show output", "show the output",
+            "print all"
+        ])
+        if (has_code_block or has_implement) and has_run_instruction and not has_file_context:
+            messages.append({
+                "role": "system",
+                "content": (
+                    "This prompt contains code and an explicit instruction to run it. "
+                    "You MUST call the run_python tool to execute the code and show actual output. "
+                    "Do NOT answer from knowledge alone — run the code and report the real result."
+                )
+            })
         full_response = ""
 
         if not self.deep_reasoning_mode and is_reasoning_only:

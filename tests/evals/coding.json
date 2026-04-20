@@ -2,151 +2,242 @@
   {
     "id": "cod_001",
     "category": "coding",
-    "description": "Bug fix — off-by-one in loop",
-    "input": "This function should return the sum of numbers 1 to n inclusive, but it returns the wrong answer. Fix it:\n```python\ndef sum_to_n(n):\n    total = 0\n    for i in range(n):\n        total += i\n    return total\n```",
+    "description": "Debug broken function \u2014 off-by-one error in binary search",
+    "input": "[no-context] This binary search is broken. Debug it and run it to prove it works on the list [1,3,5,7,9,11] searching for 7 (should return index 3):\n\ndef binary_search(arr, target):\n    low, high = 0, len(arr)\n    while low < high:\n        mid = (low + high) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            low = mid\n        else:\n            high = mid\n    return -1\n\nprint(binary_search([1,3,5,7,9,11], 7))",
     "expected_tool": "run_python",
-    "expected_contains": ["range(1", "range(n + 1"],
-    "must_not_contain": [],
-    "judge_rubric": "Did the agent identify the off-by-one error (range(n) should be range(1, n+1)), fix it, and verify with run_python?"
+    "expected_contains": [
+      "3"
+    ],
+    "must_not_contain": [
+      "I don't know"
+    ],
+    "judge_rubric": "Did the agent identify the bug (low=mid causes infinite loop, should be low=mid+1), fix it, run the corrected code, and get output 3?"
   },
   {
     "id": "cod_002",
     "category": "coding",
-    "description": "Bug fix — wrong return value",
-    "input": "This Fibonacci function has a bug — it returns the wrong value. Find and fix it:\n```python\ndef fib(n):\n    a, b = 0, 1\n    for _ in range(n):\n        a, b = b, a + b\n    return a\n```",
+    "description": "Debug broken class \u2014 mutable default argument",
+    "input": "[no-context] This code has a classic Python bug. Find it, fix it, and run it to show that two separate Cart instances don't share items:\n\nclass Cart:\n    def __init__(self, items=[]):\n        self.items = items\n\n    def add(self, item):\n        self.items.append(item)\n        return self.items\n\nc1 = Cart()\nc1.add('apple')\nc2 = Cart()\nc2.add('banana')\nprint('c1:', c1.items)\nprint('c2:', c2.items)",
     "expected_tool": "run_python",
-    "expected_contains": ["return b"],
-    "must_not_contain": [],
-    "judge_rubric": "Did the agent identify that 'return a' should be 'return b', fix it, and verify the output is correct?"
+    "expected_contains": [
+      "apple",
+      "banana"
+    ],
+    "must_not_contain": [
+      "I don't know"
+    ],
+    "judge_rubric": "Did the agent identify the mutable default argument bug, fix it with items=None and self.items=items or [], run the fixed code, and show c1 has only apple and c2 has only banana?"
   },
   {
     "id": "cod_003",
     "category": "coding",
-    "description": "Write function — palindrome check",
-    "input": "Write a Python function that checks if a string is a palindrome. It should ignore case and spaces. Test it with 'racecar', 'hello', and 'A man a plan a canal Panama'.",
+    "description": "Debug broken generator \u2014 StopIteration swallowed",
+    "input": "[no-context] This fibonacci generator silently stops after 5 values instead of running forever. Debug it and run it to print the first 10 fibonacci numbers:\n\ndef fib():\n    a, b = 0, 1\n    count = 0\n    while True:\n        yield a\n        a, b = b, a + b\n        count += 1\n        if count == 5:\n            return\n\nfor n in fib():\n    print(n)",
     "expected_tool": "run_python",
-    "expected_contains": ["True", "False"],
-    "must_not_contain": [],
-    "judge_rubric": "Did the agent write a correct palindrome function, handle case/spaces, and verify all three test cases with correct results?"
+    "expected_contains": [
+      "0",
+      "1",
+      "34"
+    ],
+    "must_not_contain": [
+      "I don't know"
+    ],
+    "judge_rubric": "Did the agent identify the count==5 return bug, remove it, run the fixed generator, and print the first 10 fibonacci numbers ending in 34?"
   },
   {
     "id": "cod_004",
     "category": "coding",
-    "description": "Write function — binary search",
-    "input": "Implement binary search in Python. The function should take a sorted list and a target value, and return the index of the target or -1 if not found. Test it.",
+    "description": "Multi-step \u2014 implement and test LRU cache from scratch",
+    "input": "[no-context] Implement an LRU cache class with get(key) and put(key, value) methods with capacity=3. Then run this test sequence and print results:\nput(1,1), put(2,2), put(3,3), get(1) \u2192 should return 1, put(4,4) \u2192 evicts key 2 (LRU), get(2) \u2192 should return -1, get(3) \u2192 should return 3, get(4) \u2192 should return 4",
     "expected_tool": "run_python",
-    "expected_contains": ["-1", "def binary_search"],
-    "must_not_contain": [],
-    "judge_rubric": "Did the agent implement correct binary search with O(log n) logic, and test both found and not-found cases?"
+    "expected_contains": [
+      "1",
+      "-1",
+      "3",
+      "4"
+    ],
+    "must_not_contain": [
+      "I don't know",
+      "I cannot"
+    ],
+    "judge_rubric": "Did the agent implement a correct LRU cache (using OrderedDict or doubly-linked list), run the test sequence, and print results 1, -1, 3, 4 in order?"
   },
   {
     "id": "cod_005",
     "category": "coding",
-    "description": "Debug — exception handling missing",
-    "input": "This code crashes when the key doesn't exist. Fix it to handle the error gracefully and return None instead of crashing:\n```python\ndef get_value(d, key):\n    return d[key]\n```",
+    "description": "Debug broken decorator \u2014 functools.wraps missing, __name__ corrupted",
+    "input": "[no-context] This decorator breaks the wrapped function's metadata. Debug it, fix it, and run it to show the function name is preserved:\n\ndef logger(func):\n    def wrapper(*args, **kwargs):\n        print(f'Calling {func.__name__}')\n        return func(*args, **kwargs)\n    return wrapper\n\n@logger\ndef add(a, b):\n    return a + b\n\nprint(add.__name__)\nprint(add(2, 3))",
     "expected_tool": "run_python",
-    "expected_contains": ["None"],
-    "must_not_contain": ["KeyError"],
-    "judge_rubric": "Did the agent add proper error handling (try/except KeyError or dict.get), return None on missing key, and verify it works?"
+    "expected_contains": [
+      "add",
+      "5"
+    ],
+    "must_not_contain": [
+      "I don't know"
+    ],
+    "judge_rubric": "Did the agent identify the missing @functools.wraps(func) on wrapper, fix it, run the code, and show add.__name__ == 'add' and add(2,3) == 5?"
   },
   {
     "id": "cod_006",
     "category": "coding",
-    "description": "Write function — flatten nested list",
-    "input": "Write a Python function to flatten a nested list of arbitrary depth. For example, [1, [2, [3, 4]], 5] should become [1, 2, 3, 4, 5]. Test it.",
+    "description": "Multi-step \u2014 parse broken CSV and compute stats",
+    "input": "[no-context] Run this code that parses a CSV string and computes mean salary by department. It has a bug causing a KeyError. Find the bug, fix it, and print the correct means:\n\nimport csv, io\nfrom collections import defaultdict\n\ndata = '''name,dept,salary\nAlice,Eng,90000\nBob,Eng,85000\nCarol,HR,60000\nDave,HR,65000\nEve,Eng,95000'''\n\nreader = csv.DictReader(io.StringIO(data))\nsalaries = defaultdict(list)\nfor row in reader:\n    salaries[row['department']].append(int(row['salary']))\n\nfor dept, vals in salaries.items():\n    print(f'{dept}: {sum(vals)/len(vals):.0f}')",
     "expected_tool": "run_python",
-    "expected_contains": ["1", "2", "3", "4", "5"],
-    "must_not_contain": [],
-    "judge_rubric": "Did the agent write a recursive or iterative flatten function that handles arbitrary depth and verify the output is [1, 2, 3, 4, 5]?"
+    "expected_contains": [
+      "Eng",
+      "HR",
+      "90000"
+    ],
+    "must_not_contain": [
+      "I don't know"
+    ],
+    "judge_rubric": "Did the agent spot the KeyError (column is 'dept' not 'department'), fix it, run the code, and print correct means: Eng ~90000, HR ~62500?"
   },
   {
     "id": "cod_007",
     "category": "coding",
-    "description": "Bug fix — mutable default argument",
-    "input": "This function has a classic Python bug. Identify it and fix it:\n```python\ndef append_item(item, lst=[]):\n    lst.append(item)\n    return lst\n```",
+    "description": "Debug broken recursion \u2014 missing base case causes RecursionError",
+    "input": "[no-context] This recursive flatten function crashes. Debug it and run it to flatten [[1,[2,3]],[4,[5,[6]]]] into [1,2,3,4,5,6]:\n\ndef flatten(lst):\n    result = []\n    for item in lst:\n        if isinstance(item, list):\n            result.extend(flatten(item))\n        result.append(item)\n    return result\n\nprint(flatten([[1,[2,3]],[4,[5,[6]]]]))",
     "expected_tool": "run_python",
-    "expected_contains": ["None", "def append_item"],
-    "must_not_contain": [],
-    "judge_rubric": "Did the agent identify the mutable default argument bug, fix it using lst=None and if lst is None: lst=[], and verify the fix works?"
+    "expected_contains": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6"
+    ],
+    "must_not_contain": [
+      "I don't know",
+      "RecursionError"
+    ],
+    "judge_rubric": "Did the agent find the bug (missing else before result.append \u2014 non-lists get appended twice and lists also get appended as objects), fix it, run it, and output [1,2,3,4,5,6]?"
   },
   {
     "id": "cod_008",
     "category": "coding",
-    "description": "Write class — stack implementation",
-    "input": "Implement a Stack class in Python with push, pop, peek, and is_empty methods. Test all four methods.",
+    "description": "Multi-step \u2014 implement dijkstra and find shortest path",
+    "input": "[no-context] Implement Dijkstra's algorithm and run it on this graph to find the shortest path from A to E:\ngraph = {\n  'A': {'B': 4, 'C': 2},\n  'B': {'D': 3, 'E': 1},\n  'C': {'B': 1, 'D': 5},\n  'D': {'E': 2},\n  'E': {}\n}\nPrint the shortest distance and the path taken.",
     "expected_tool": "run_python",
-    "expected_contains": ["push", "pop", "peek", "is_empty"],
-    "must_not_contain": [],
-    "judge_rubric": "Did the agent implement a correct Stack class with all four methods and verify they work correctly including edge cases like empty stack?"
+    "expected_contains": [
+      "4",
+      "A"
+    ],
+    "must_not_contain": [
+      "I don't know",
+      "I cannot"
+    ],
+    "judge_rubric": "Did the agent implement Dijkstra correctly, run it, and find the shortest distance of 4 via path A\u2192C\u2192B\u2192E?"
   },
   {
     "id": "cod_009",
     "category": "coding",
-    "description": "Algorithm — two sum problem",
-    "input": "Write a Python function that takes a list of integers and a target sum, and returns the indices of the two numbers that add up to the target. Assume exactly one solution exists. Use O(n) time complexity. Test with [2, 7, 11, 15], target=9.",
+    "description": "Debug broken context manager \u2014 resource not released on exception",
+    "input": "[no-context] This context manager has a bug \u2014 if an exception occurs, the resource is never released. Fix it and run a test that proves the resource is released even when an exception is raised:\n\nclass ManagedResource:\n    def __enter__(self):\n        print('Resource acquired')\n        return self\n\n    def __exit__(self, exc_type, exc_val, exc_tb):\n        if exc_type is None:\n            print('Resource released')\n\n    def do_work(self):\n        raise ValueError('something went wrong')\n\nwith ManagedResource() as r:\n    r.do_work()",
     "expected_tool": "run_python",
-    "expected_contains": ["0", "1"],
-    "must_not_contain": [],
-    "judge_rubric": "Did the agent implement an O(n) hash map solution (not O(n^2) nested loops) and return [0, 1] for the test case?"
+    "expected_contains": [
+      "Resource acquired",
+      "Resource released"
+    ],
+    "must_not_contain": [
+      "I don't know"
+    ],
+    "judge_rubric": "Did the agent fix __exit__ to always print 'Resource released' regardless of exc_type, run the code, and show both 'Resource acquired' and 'Resource released' printed even when ValueError is raised?"
   },
   {
     "id": "cod_010",
     "category": "coding",
-    "description": "Write class — token bucket rate limiter",
-    "input": "Implement a token bucket rate limiter in Python. It should allow N requests per second with bursting. Test it by simulating 8 requests where only 5 tokens are available — show which are allowed and which are denied.",
+    "description": "Multi-step \u2014 implement and verify a rate limiter",
+    "input": "[no-context] Implement a token bucket rate limiter class that allows max 5 requests per second. Then run a simulation: fire 8 requests instantly and print which ones are allowed vs denied. The first 5 should be allowed, the last 3 denied.",
     "expected_tool": "run_python",
-    "expected_contains": ["5", "3"],
-    "must_not_contain": [],
-    "judge_rubric": "Did the agent implement a correct token bucket, and demonstrate that 5 requests are allowed and 3 are denied out of 8 total?"
+    "expected_contains": [
+      "allowed",
+      "denied"
+    ],
+    "must_not_contain": [
+      "I don't know",
+      "I cannot"
+    ],
+    "judge_rubric": "Did the agent implement a token bucket or similar rate limiter, run the simulation, and correctly show 5 allowed and 3 denied requests?"
   },
   {
     "id": "cod_011",
     "category": "coding",
-    "description": "Bug fix — infinite loop risk",
-    "input": "This function is supposed to find the first prime number greater than n, but it can loop forever. Fix it:\n```python\ndef next_prime(n):\n    candidate = n + 1\n    while True:\n        for i in range(2, candidate):\n            if candidate % i == 0:\n                break\n        else:\n            return candidate\n        candidate += 1\n```",
+    "description": "Debug broken async code \u2014 missing await causes coroutine never awaited",
+    "input": "[no-context] This async code never actually fetches anything. Debug it and run a working version that simulates async fetching of 3 URLs and prints results:\n\nimport asyncio\n\nasync def fetch(url):\n    await asyncio.sleep(0.1)\n    return f'data from {url}'\n\nasync def main():\n    urls = ['url1', 'url2', 'url3']\n    results = [fetch(url) for url in urls]\n    for r in results:\n        print(r)\n\nasyncio.run(main())",
     "expected_tool": "run_python",
-    "expected_contains": ["def next_prime"],
-    "must_not_contain": [],
-    "judge_rubric": "Did the agent correctly identify this actually works (no infinite loop) OR improve it with sqrt optimization, and verify it returns correct primes?"
+    "expected_contains": [
+      "data from url1",
+      "data from url2",
+      "data from url3"
+    ],
+    "must_not_contain": [
+      "I don't know",
+      "coroutine object at 0x"
+    ],
+    "judge_rubric": "Did the agent identify the missing await/asyncio.gather (results contains coroutine objects not results), fix it using asyncio.gather or awaited calls, run it, and print 'data from url1/2/3'?"
   },
   {
     "id": "cod_012",
     "category": "coding",
-    "description": "Write function — LRU cache",
-    "input": "Implement a simple LRU (Least Recently Used) cache in Python with get and put operations and a fixed capacity. Do not use functools.lru_cache. Test with capacity=2.",
+    "description": "Multi-step \u2014 implement trie and search words",
+    "input": "[no-context] Implement a Trie data structure with insert and search methods. Then insert these words: ['apple', 'app', 'application', 'apply', 'apt'] and run these searches: search('app') \u2192 True, search('ap') \u2192 False (prefix only, not full word), search('apple') \u2192 True, starts_with('appl') \u2192 True. Print all results.",
     "expected_tool": "run_python",
-    "expected_contains": ["get", "put", "-1"],
-    "must_not_contain": ["lru_cache", "functools"],
-    "judge_rubric": "Did the agent implement LRU cache using OrderedDict or a doubly-linked list + hashmap, and correctly demonstrate eviction behavior?"
+    "expected_contains": [
+      "True",
+      "False"
+    ],
+    "must_not_contain": [
+      "I don't know",
+      "I cannot"
+    ],
+    "judge_rubric": "Did the agent implement a correct Trie with insert/search/starts_with, run the searches, and correctly output True, False, True, True?"
   },
   {
     "id": "cod_013",
     "category": "coding",
-    "description": "Read own file — explain code_runner.py",
-    "input": "[no-context] What does the SafeCodeRunner class in src/code_runner.py do? How does it sandbox Python execution?",
-    "expected_tool": "read_file",
-    "expected_contains": ["safecoderrunner", "sandbox", "timeout"],
-    "must_not_contain": [],
-    "judge_rubric": "Did the agent read the actual code_runner.py file and accurately describe how SafeCodeRunner works, including sandboxing and timeout mechanisms?"
+    "description": "Debug broken thread safety \u2014 race condition in counter",
+    "input": "[no-context] This multithreaded counter has a race condition and almost never reaches 10000. Identify the bug, fix it, and run a version that reliably prints exactly 10000:\n\nimport threading\n\ncounter = 0\n\ndef increment():\n    global counter\n    for _ in range(1000):\n        counter += 1\n\nthreads = [threading.Thread(target=increment) for _ in range(10)]\nfor t in threads: t.start()\nfor t in threads: t.join()\nprint(counter)",
+    "expected_tool": "run_python",
+    "expected_contains": [
+      "10000"
+    ],
+    "must_not_contain": [
+      "I don't know"
+    ],
+    "judge_rubric": "Did the agent identify the race condition on counter += 1 (not atomic), fix it with threading.Lock(), run the fixed version, and reliably print 10000?"
   },
   {
     "id": "cod_014",
     "category": "coding",
-    "description": "Read own file — explain router.py complexity routing",
-    "input": "[no-context] How does the estimate_complexity function in src/router.py decide whether a query is simple, reasoning, or complex?",
-    "expected_tool": "read_file",
-    "expected_contains": ["simple", "reasoning", "complex"],
-    "must_not_contain": [],
-    "judge_rubric": "Did the agent read router.py and accurately describe the three-tier complexity classification logic including word count threshold and keyword detection?"
+    "description": "Multi-step \u2014 parse and analyse log file",
+    "input": "[no-context] Run this code to parse a simulated log, find all ERROR lines, count errors by module, and print a sorted summary:\n\nlogs = '''2026-04-15 10:01:02 INFO  auth: user login\n2026-04-15 10:01:05 ERROR db: connection timeout\n2026-04-15 10:01:08 INFO  api: request received\n2026-04-15 10:01:12 ERROR auth: token expired\n2026-04-15 10:01:15 ERROR db: query failed\n2026-04-15 10:01:20 INFO  db: connection restored\n2026-04-15 10:01:25 ERROR api: rate limit exceeded\n2026-04-15 10:01:30 ERROR db: connection timeout'''\n\nWrite the parsing code, run it, and print each module with its error count sorted highest first.",
+    "expected_tool": "run_python",
+    "expected_contains": [
+      "db",
+      "3",
+      "auth",
+      "api"
+    ],
+    "must_not_contain": [
+      "I don't know"
+    ],
+    "judge_rubric": "Did the agent write and run log parsing code that correctly identifies db:3 errors, auth:1, api:1, and prints them sorted highest first?"
   },
   {
     "id": "cod_015",
     "category": "coding",
-    "description": "Self-correction — fix agent's own bug",
-    "input": "Write Python code that reads a JSON file, filters entries where 'score' > 0.8, and writes the filtered results to a new file. Include error handling for file not found.",
+    "description": "Debug broken metaclass \u2014 __init_subclass__ overrides break inheritance",
+    "input": "[no-context] This plugin registry using __init_subclass__ is broken \u2014 subclasses of plugins are not being registered and the registry is missing entries. Debug it, fix it, and run a test showing all 3 plugins registered:\n\nclass PluginBase:\n    _registry = {}\n\n    def __init_subclass__(cls, plugin_name=None, **kwargs):\n        if plugin_name:\n            PluginBase._registry[plugin_name] = cls\n\nclass AuthPlugin(PluginBase, plugin_name='auth'):\n    pass\n\nclass DBPlugin(PluginBase, plugin_name='db'):\n    pass\n\nclass CachePlugin(DBPlugin, plugin_name='cache'):\n    pass\n\nprint(PluginBase._registry)",
     "expected_tool": "run_python",
-    "expected_contains": ["json", "score", "FileNotFoundError"],
-    "must_not_contain": [],
-    "judge_rubric": "Did the agent write correct JSON filter code with proper error handling for FileNotFoundError and verify it runs without errors?"
+    "expected_contains": [
+      "auth",
+      "db",
+      "cache"
+    ],
+    "must_not_contain": [
+      "I don't know"
+    ],
+    "judge_rubric": "Did the agent identify that CachePlugin inherits from DBPlugin (not PluginBase directly) so __init_subclass__ needs super().__init_subclass__(**kwargs) to propagate up, fix it, run it, and show all 3 plugins in the registry?"
   }
 ]
