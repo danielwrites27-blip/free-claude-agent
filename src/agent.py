@@ -474,7 +474,7 @@ class FreeAgent:
         if self.openrouter_glm_client:
             self.available_models["z-ai/glm-5.1"] = {"provider": OPENROUTER, "rpd": 10000}
         if self.together_client:
-            self.available_models["z-ai/glm-5.1-together"] = {"provider": TOGETHER, "rpd": 10000}
+            self.available_models["zai-org/GLM-5.1"] = {"provider": TOGETHER, "rpd": 10000}
         if self.minimax_client:
             self.available_models["minimaxai/minimax-m2.7"] = {"provider": MINIMAX, "rpd": 10000}
 
@@ -682,7 +682,7 @@ class FreeAgent:
         if self.openrouter_glm_client:
             tool_models_to_try.append(("z-ai/glm-5.1", OPENROUTER))
         if self.together_client:
-            tool_models_to_try.append(("z-ai/glm-5.1-together", TOGETHER))
+            tool_models_to_try.append(("zai-org/GLM-5.1", TOGETHER))
 
         for round_num in range(MAX_TOOL_ROUNDS):
             # Non-streaming call to check for tool use — with rate-limit fallback
@@ -811,7 +811,7 @@ class FreeAgent:
         if self.openrouter_glm_client:
             tool_models_to_try.append(("z-ai/glm-5.1", OPENROUTER))
         if self.together_client:
-            tool_models_to_try.append(("z-ai/glm-5.1-together", TOGETHER))
+            tool_models_to_try.append(("zai-org/GLM-5.1", TOGETHER))
 
         for round_num in range(MAX_TOOL_ROUNDS):
             response = None
@@ -1579,7 +1579,7 @@ class FreeAgent:
                 "Meta-Llama-3.3-70B-Instruct":    "🔥 70B",
                 "nvidia/nemotron-3-nano-30b-a3b":  "⚡ Nemotron",
                 "z-ai/glm-5.1":                   "🧠 GLM-5.1 · openrouter",
-                "z-ai/glm-5.1-together":          "🧠 GLM-5.1 · together",
+                "zai-org/GLM-5.1":          "🧠 GLM-5.1 · together",
             }.get(model, "⚡ 8B")
             logger.info(f"[Provider] reasoning-only bypass model={model} provider={provider}")
             bypass_ok = True
@@ -1616,7 +1616,7 @@ class FreeAgent:
                 "nvidia/nemotron-3-nano-30b-a3b":   "⚡ Nemotron",
                 "zai-org/GLM-5.1-FP8":              "🧠 GLM-5.1 · modal",
                 "z-ai/glm-5.1":                     "🧠 GLM-5.1 · openrouter",
-                "z-ai/glm-5.1-together":             "🧠 GLM-5.1 · together",
+                "zai-org/GLM-5.1":             "🧠 GLM-5.1 · together",
                 "minimaxai/minimax-m2.7":            "🔥 MiniMax",
             }.get(model, "⚡ 8B")
             used_provider = provider
@@ -1631,7 +1631,7 @@ class FreeAgent:
             if self.openrouter_glm_client:
                 providers_to_try.append(("z-ai/glm-5.1", OPENROUTER))
             if self.together_client:
-                providers_to_try.append(("z-ai/glm-5.1-together", TOGETHER))
+                providers_to_try.append(("zai-org/GLM-5.1", TOGETHER))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
             stream_gen = None
             for try_model, try_provider in providers_to_try:
@@ -1685,7 +1685,7 @@ class FreeAgent:
             if self.openrouter_glm_client:
                 providers_to_try.append(("z-ai/glm-5.1", OPENROUTER))
             if self.together_client:
-                providers_to_try.append(("z-ai/glm-5.1-together", TOGETHER))
+                providers_to_try.append(("zai-org/GLM-5.1", TOGETHER))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
             stream = None
             for try_model, try_provider in providers_to_try:
