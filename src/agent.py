@@ -1126,12 +1126,11 @@ class FreeAgent:
 
         trigger_words = [
             "bug", "error", "fix", "broken", "not working", "issue", "debug",
-            "feature", "add", "update",
             "not saving", "isn't", "doesn't",
-            "caveman", "token", "compress", "mode", "routing", "router",
-            "memory", "stream", "context", "inject",
+            "caveman mode", "token compression", "compress response", "routing logic", "model router",
+            "memory.py", "recall function", "bm25", "chromadb",
             "code_runner", "code runner",
-            "app.py", "agent.py", "caveman.py", "memory.py", "router.py",
+            "app.py", "agent.py", "caveman.py", "router.py",
         ]
 
         triggered = any(word in prompt_lower for word in trigger_words) and "[no-context]" not in prompt_lower
