@@ -46,6 +46,8 @@ facts = [
 
     # mem_008 — GROQ_API_KEY exact term
     "GROQ_API_KEY is the primary fallback API key for the project. It uses Groq's llama-3.1-8b-instant model as the ultimate fallback provider. Note: Groq API is Cloudflare-blocked on the VM IP — use the pod for anything needing Groq.",
+    # pln_003 — daily token limit
+    "Daniel's daily token limit for the agent is 50,000 tokens. This is set via the DAILY_TOKEN_LIMIT environment variable.",
 ]
 
 print(f"[seed_memory] Seeding {len(facts)} facts...\n")

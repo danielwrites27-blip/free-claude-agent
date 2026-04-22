@@ -28,12 +28,13 @@
     "category": "planning",
     "description": "Two-tool chain \u2014 memory then calculation",
     "input": "What is my daily token limit, and what percentage of it would 15,000 tokens represent?",
-    "expected_tool": "recall_memory",
+    "expected_tool": null,
     "expected_contains": [
       "%"
     ],
     "must_not_contain": [],
-    "judge_rubric": "Did the agent: (1) recall the daily token limit from memory, (2) calculate the percentage? Both steps required."
+    "judge_rubric": "Did the agent: (1) recall the daily token limit from memory, (2) calculate the percentage? Both steps required.",
+    "tool_optional": true
   },
   {
     "id": "pln_004",

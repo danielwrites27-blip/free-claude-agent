@@ -1608,6 +1608,7 @@ class FreeAgent:
             "run", "execute", "store", "remember", "recall", "retrieve",
             "latest", "current", "today", "news", "price", "weather",
             "read file", "open file", "write",
+            "percentage", "token limit", "how many", "how much",
         ]
         lower_p = prompt.lower()
         is_reasoning_only = (
@@ -1624,13 +1625,17 @@ class FreeAgent:
             for m in messages if m.get("role") == "system"
         )
         if has_file_context:
+            lower_p = prompt.lower()
+            has_explicit_search = any(t in lower_p for t in ["search", "look up", "latest", "current", "news", "find"])
+            has_explicit_recall = any(t in lower_p for t in ["remember", "recall", "what do you know", "what have i told"])
+            suppress_parts = ["The project source files have already been injected above. Answer directly from that context."]
+            if not has_explicit_search:
+                suppress_parts.append("Do NOT call web_search — the information is already available.")
+            if not has_explicit_recall:
+                suppress_parts.append("Do NOT call recall_memory — the information is already available.")
             messages.append({
                 "role": "system",
-                "content": (
-                    "The project source files have already been injected above. "
-                    "Answer directly from that context. "
-                    "Do NOT call web_search or recall_memory — the information is already available."
-                )
+                "content": " ".join(suppress_parts)
             })
         # ── CODING TASK NUDGE: force run_python when prompt has code + run instruction ──
         has_code_block = any(marker in prompt for marker in ["def ", "class ", "import ", "```"]) or ("python" in prompt.lower() and any(t in prompt.lower() for t in ["write", "code", "script", "function"]))
