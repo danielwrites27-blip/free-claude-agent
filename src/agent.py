@@ -1605,10 +1605,12 @@ class FreeAgent:
             "how does", "how do", "how did", "how is",
             "why does", "why do", "why did", "why is",
             "explain", "define", "describe", "tell me about",
+            "the capital of", "should i use", "is it better", "which is better",
+            "i need to", "i want to", "can you recommend", "recommend a",
         ]
         tool_override_triggers = [
             "search", "look up", "find", "fetch", "calculate", "compute",
-            "run", "execute", "store", "remember", "recall", "retrieve",
+            "run this", "execute", "store memory", "remember this", "recall", "retrieve",
             "latest", "current", "today", "news", "price", "weather",
             "read file", "open file", "write",
             "percentage", "token limit", "how many", "how much",
@@ -1617,7 +1619,7 @@ class FreeAgent:
         is_reasoning_only = (
             any(lower_p.startswith(t) or lower_p.startswith("hey " + t) for t in reasoning_only_triggers)
             and not any(t in lower_p for t in tool_override_triggers)
-            and len(prompt.split()) <= 25
+            and len(prompt.split()) <= 35
         )
 
         # ── NORMAL MODE: native tool calling (stream final answer) ────────
@@ -1674,19 +1676,35 @@ class FreeAgent:
             }.get(model, "⚡ 8B")
             logger.info(f"[Provider] reasoning-only bypass model={model} provider={provider}")
             bypass_ok = True
-            try:
-                stream = self._call_provider(
-                    model=model, provider=provider, messages=messages,
-                    max_tokens=max_output_tokens, stream=True,
-                )
-                for chunk in stream:
-                    delta = chunk.choices[0].delta.content or ""
-                    if delta:
-                        full_response += delta
-                        yield delta
-            except Exception as e:
-                logger.warning(f"[Provider] reasoning-only bypass failed: {e} — falling through")
-                bypass_ok = False
+            bypass_models = [
+                (model, provider),
+                ("qwen-3-235b-a22b-instruct-2507", "cerebras"),
+                ("nvidia/nemotron-3-nano-30b-a3b", "nvidia"),
+                ("Meta-Llama-3.3-70B-Instruct", "sambanova"),
+                ("llama-3.1-8b-instant", "groq"),
+            ]
+            # deduplicate keeping order
+            seen = set()
+            bypass_models = [x for x in bypass_models if not (x in seen or seen.add(x))]
+            bypass_ok = False
+            for bypass_model, bypass_provider in bypass_models:
+                try:
+                    stream = self._call_provider(
+                        model=bypass_model, provider=bypass_provider, messages=messages,
+                        max_tokens=max_output_tokens, stream=True,
+                    )
+                    for chunk in stream:
+                        delta = chunk.choices[0].delta.content or ""
+                        if delta:
+                            full_response += delta
+                            yield delta
+                    model = bypass_model
+                    provider = bypass_provider
+                    bypass_ok = True
+                    break
+                except Exception as e:
+                    logger.warning(f"[Provider] reasoning-only bypass failed on {bypass_model}: {e} — trying next")
+                    continue
             if bypass_ok:
                 model_label = self._last_model_label
                 used_provider = getattr(self, "_last_provider", provider)

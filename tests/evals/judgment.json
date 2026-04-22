@@ -77,7 +77,7 @@
     "expected_tool": null,
     "expected_contains": [
       "sqlite",
-      "dictionary"
+      "dict"
     ],
     "must_not_contain": [
       "run_python",
