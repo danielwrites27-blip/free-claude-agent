@@ -1640,7 +1640,7 @@ class FreeAgent:
             "execute it", "print the result", "print results", "show output", "show the output",
             "print all"
         ])
-        if (has_code_block or has_implement) and has_run_instruction and not has_file_context:
+        if (has_code_block or has_implement) and has_run_instruction:
             messages.append({
                 "role": "system",
                 "content": (
