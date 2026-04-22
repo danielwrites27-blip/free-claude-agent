@@ -521,7 +521,11 @@ class FreeAgent:
         known_src_files = ['agent.py', 'caveman.py', 'memory.py', 'router.py', 'code_runner.py']
         if "/" not in filepath and filepath in known_src_files:
             filepath = "src/" + filepath
-        return self.read_file(filepath, line_number=line_number)
+        result = self.read_file(filepath, line_number=line_number)
+        MAX_TOOL_CHARS = 9000
+        if len(result) > MAX_TOOL_CHARS:
+            result = result[:MAX_TOOL_CHARS] + "\n... [file truncated at " + str(MAX_TOOL_CHARS) + " chars - use line_number to read specific sections]"
+        return result
 
     def _tool_fetch_url(self, url: str) -> str:
         """Execute fetch_url tool."""
@@ -651,11 +655,11 @@ class FreeAgent:
             reviewed = review_response.choices[0].message.content or ""
             if reviewed.strip().upper().startswith("LGTM"):
                 return answer  # original is good
-            elif len(reviewed.strip()) > 20:
+            elif len(reviewed.strip()) > 20 and len(reviewed.strip()) >= len(answer.strip()) * 0.5:
                 print(f"[ReviewPass] Answer improved by reviewer", flush=True)
                 return reviewed  # use improved version
             else:
-                return answer  # fallback to original if review is too short
+                return answer  # fallback to original if review is too short or just a critique
         except Exception as e:
             print(f"[ReviewPass] Failed: {e} — using original answer", flush=True)
             return answer  # always safe — never breaks the response
