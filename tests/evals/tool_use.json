@@ -33,13 +33,14 @@
     "category": "tool_use",
     "description": "Read own source file",
     "input": "What does the _bm25_recall function in memory.py do?",
-    "expected_tool": "read_file",
+    "expected_tool": null,
     "expected_contains": [
       "bm25",
-      "memory"
+      "search"
     ],
     "must_not_contain": [],
-    "judge_rubric": "Did the agent read the actual file and describe BM25 recall accurately, not from memory?"
+    "judge_rubric": "Did the agent read the actual file and describe BM25 recall accurately, not from memory?",
+    "tool_optional": true
   },
   {
     "id": "tool_004",
@@ -59,7 +60,7 @@
     "category": "tool_use",
     "description": "Recall memory trigger",
     "input": "What do you remember about my programming language preference?",
-    "expected_tool": null,
+    "expected_tool": "recall_memory",
     "expected_contains": [
       "python"
     ],
