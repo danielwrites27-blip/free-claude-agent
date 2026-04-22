@@ -1633,12 +1633,12 @@ class FreeAgent:
                 )
             })
         # ── CODING TASK NUDGE: force run_python when prompt has code + run instruction ──
-        has_code_block = any(marker in prompt for marker in ["def ", "class ", "import ", "```"])
+        has_code_block = any(marker in prompt for marker in ["def ", "class ", "import ", "```"]) or ("python" in prompt.lower() and any(t in prompt.lower() for t in ["write", "code", "script", "function"]))
         has_implement = any(t in prompt.lower() for t in ["implement ", "implement a", "implement an"])
         has_run_instruction = any(t in prompt.lower() for t in [
             "run it", "run this", "run a ", "run the", "run your",
             "execute it", "print the result", "print results", "show output", "show the output",
-            "print all"
+            "print all", "write and run", "run python", "and run it", "then run",
         ])
         if (has_code_block or has_implement) and has_run_instruction:
             messages.append({
