@@ -697,6 +697,8 @@ class FreeAgent:
         # ── CODING TASK: promote GLM-5.1 to first fallback position ──
         if self.cloudflare_token:
             tool_models_to_try.append(("@cf/nvidia/nemotron-3-120b-a12b", CLOUDFLARE))
+        if is_coding_task:
+            tool_models_to_try = [m for m in tool_models_to_try if m[0] != "llama-3.1-8b-instant"]
         if is_coding_task and self.openrouter_glm_client:
             glm_entry = ("z-ai/glm-5.1", OPENROUTER)
             tool_models_to_try = [tool_models_to_try[0], glm_entry] + [
@@ -835,6 +837,8 @@ class FreeAgent:
         # ── CODING TASK: promote GLM-5.1 to first fallback position ──
         if self.cloudflare_token:
             tool_models_to_try.append(("@cf/nvidia/nemotron-3-120b-a12b", CLOUDFLARE))
+        if is_coding_task:
+            tool_models_to_try = [m for m in tool_models_to_try if m[0] != "llama-3.1-8b-instant"]
         if is_coding_task and self.openrouter_glm_client:
             glm_entry = ("z-ai/glm-5.1", OPENROUTER)
             tool_models_to_try = [tool_models_to_try[0], glm_entry] + [
@@ -1593,6 +1597,7 @@ class FreeAgent:
         # ── REASONING-ONLY BYPASS: skip tool loop for pure knowledge queries ──
         reasoning_only_triggers = [
             "what does", "what is", "what are", "what was", "what were",
+            "what is the difference", "what's the difference",
             "who is", "who was", "who are", "who were",
             "how does", "how do", "how did", "how is",
             "why does", "why do", "why did", "why is",
