@@ -1689,16 +1689,28 @@ class FreeAgent:
             "i need to", "i want to", "can you recommend", "recommend a",
         ]
         tool_override_triggers = [
-            "search", "look up", "find", "fetch", "calculate", "compute",
+            "search for", "search the", "look up", "find me", "find the", "fetch", "calculate", "compute",
             "run this", "execute", "store memory", "remember this", "recall", "retrieve",
             "latest", "current", "today", "news", "price", "weather",
             "read file", "open file", "write",
             "percentage", "token limit", "how many", "how much",
+            "what do you remember", "do you remember", "what do you know about",
         ]
         lower_p = prompt.lower()
+        has_run_instruction_bypass = any(t in prompt.lower() for t in [
+            "run it", "run this", "run a ", "run the", "run your",
+            "execute it", "print the result", "print results", "show output", "show the output",
+            "print all", "write and run", "run python", "and run it", "then run",
+        ])
+        has_no_run_bypass = any(t in prompt.lower() for t in [
+            "don't run", "do not run", "just show", "don't execute",
+            "do not execute", "without running", "no need to run",
+            "don't execute it", "just the code", "just show the code",
+        ])
         is_reasoning_only = (
             any(lower_p.startswith(t) or lower_p.startswith("hey " + t) for t in reasoning_only_triggers)
             and not any(t in lower_p for t in tool_override_triggers)
+            and not (has_run_instruction_bypass and not has_no_run_bypass)
             and len(prompt.split()) <= 35
         )
 
