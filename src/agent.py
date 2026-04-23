@@ -1730,7 +1730,12 @@ class FreeAgent:
             "execute it", "print the result", "print results", "show output", "show the output",
             "print all", "write and run", "run python", "and run it", "then run",
         ])
-        if (has_code_block or has_implement) and has_run_instruction:
+        has_no_run = any(t in prompt.lower() for t in [
+            "don't run", "do not run", "just show", "don't execute",
+            "do not execute", "without running", "no need to run",
+            "don't execute it", "just the code", "just show the code",
+        ])
+        if (has_code_block or has_implement) and has_run_instruction and not has_no_run:
             messages.append({
                 "role": "system",
                 "content": (
