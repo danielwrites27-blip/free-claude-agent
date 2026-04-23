@@ -1475,7 +1475,7 @@ class FreeAgent:
         _is_short = _word_count <= 8
         _has_vague_ref = any(v in _prompt_lower for v in _vague_refs)
         _has_clear_verb = any(v in _prompt_lower for v in _clear_verbs)
-        if _is_short and _has_vague_ref and not _has_clear_verb:
+        if _is_short and _has_vague_ref and not _has_clear_verb and not self.conversation_history:
             return (
                 "I want to make sure I help with the right thing — could you be a bit more specific? "
                 "For example, are you asking about the GitHub repo, the eval scores, a specific file, "
@@ -1610,7 +1610,7 @@ class FreeAgent:
         _is_short = _word_count <= 8
         _has_vague_ref = any(v in _prompt_lower for v in _vague_refs)
         _has_clear_verb = any(v in _prompt_lower for v in _clear_verbs)
-        if _is_short and _has_vague_ref and not _has_clear_verb:
+        if _is_short and _has_vague_ref and not _has_clear_verb and not self.conversation_history:
             yield (
                 "I want to make sure I help with the right thing — could you be a bit more specific? "
                 "For example, are you asking about the GitHub repo, the eval scores, a specific file, "

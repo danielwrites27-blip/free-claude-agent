@@ -75,10 +75,16 @@ def chat_stream(message, history, mode):
     agent = get_agent()
     caveman_mode = (mode == "Caveman")
     deep_reasoning = (mode == "Deep Reasoning")
-
     agent.caveman_mode = caveman_mode
     agent.deep_reasoning_mode = deep_reasoning
-
+    # Sync Gradio display history → agent conversation history
+    # This ensures history is correct even if the singleton was reset
+    if history and len(history) != len(agent.conversation_history) // 2:
+        agent.conversation_history = []
+        for user_msg, bot_msg in history:
+            if user_msg and bot_msg:
+                agent.conversation_history.append({"role": "user", "content": str(user_msg)})
+                agent.conversation_history.append({"role": "assistant", "content": str(bot_msg)})
     full_response = ""
     for chunk in agent.ask_stream(message):
         full_response += chunk
@@ -291,7 +297,7 @@ with gr.Blocks(
 auth_user = os.getenv("HF_AUTH_USERNAME")
 auth_pass = os.getenv("HF_AUTH_PASSWORD")
 
-launch_kwargs = dict(server_name="0.0.0.0", server_port=7860, show_error=True)
+launch_kwargs = dict(server_name="0.0.0.0", server_port=7860, show_error=True, max_threads=1)
 if auth_user and auth_pass:
     launch_kwargs["auth"] = (auth_user, auth_pass)
 
