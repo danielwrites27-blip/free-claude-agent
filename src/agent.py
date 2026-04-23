@@ -1220,6 +1220,39 @@ class FreeAgent:
         context_parts.append("--- END PROJECT CONTEXT ---")
         return "\n".join(context_parts) if len(context_parts) > 2 else ""
 
+    # ── SELF-KNOWLEDGE ────────────────────────────────────────────────────────
+    def get_model_chain_description(self) -> str:
+        """Returns a human-readable description of the current model chain for self-knowledge."""
+        lines = [
+            "You are Free Claude Agent. Here is your accurate current configuration:\n",
+            "PRIMARY MODEL: Cerebras / qwen-3-235b-a22b-instruct-2507 (best quality, 30K TPM limit)\n",
+            "TOOL-CALLING FALLBACK CHAIN (normal mode):",
+            "  1. Cerebras / qwen-3-235b-a22b-instruct-2507 (primary)",
+            "  2. Groq / llama-3.1-8b-instant (weak — filtered out for coding tasks)",
+            "  3. Cerebras / qwen-3-235b-a22b-instruct-2507 (retry)",
+            "  4. NVIDIA / nemotron-3-nano-30b-a3b (agentic, 1M context window)",
+            "  5. SambaNova / Meta-Llama-3.3-70B-Instruct",
+            "  6. OpenRouter / GLM-5.1 (promoted to #1 for coding — #1 globally on SWE-Bench Pro)",
+            "  7. Together / GLM-5.1 (no credits currently — 402 errors)",
+            "  8. Cloudflare / nemotron-3-120b-a12b (120B MoE, strong agentic)",
+            "  9. Groq / llama-3.1-8b-instant (ultimate fallback)\n",
+            "CODING TASKS: GLM-5.1 via OpenRouter is promoted to position 1 fallback. llama-3.1-8b-instant is excluded entirely.\n",
+            "DEEP REASONING MODE: SambaNova / DeepSeek-V3.1 (primary) → Groq 70B → NVIDIA Nemotron-Nano → SambaNova 70B → GLM-5.1 → Cloudflare → Groq 8B.\n",
+            "REASONING-ONLY BYPASS: Pure knowledge queries skip the tool loop and go direct to providers: Cerebras → NVIDIA → SambaNova → Groq.\n",
+            "TOOLS: web_search, run_python, read_file, fetch_url, recall_memory, store_memory, calculate\n",
+            "MEMORY: ChromaDB persistent semantic memory (5GB volume) + BM25 hybrid recall (SocratiCode)\n",
+        ]
+        active = []
+        if self.cerebras_client: active.append("Cerebras")
+        if self.groq_client: active.append("Groq")
+        if self.nvidia_client: active.append("NVIDIA")
+        if self.sambanova_client: active.append("SambaNova")
+        if self.openrouter_client: active.append("OpenRouter")
+        if self.together_client: active.append("Together")
+        if self.cloudflare_token: active.append("Cloudflare")
+        lines.append(f"PROVIDERS INITIALIZED THIS SESSION: {', '.join(active) if active else 'unknown'}")
+        return "\n".join(lines)
+
     # ── MESSAGE BUILDER ───────────────────────────────────────────────────────
     def _build_messages(self, prompt: str, memory_context: str) -> List[Dict]:
         """Build the full messages array for the API call."""
@@ -1278,6 +1311,7 @@ class FreeAgent:
                 "you MUST call recall_memory before answering. "
                 "Never call web_search to answer questions about the user's personal preferences or past conversations.\n\n"
             )
+            system_content += "\n\nAGENT SELF-KNOWLEDGE:\n" + self.get_model_chain_description()
 
         messages = [{"role": "system", "content": system_content}]
 
