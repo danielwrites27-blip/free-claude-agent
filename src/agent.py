@@ -1457,13 +1457,35 @@ class FreeAgent:
         if self.tokens_used_today >= self.daily_token_limit:
             return "⚠️ Daily token limit reached. Resets in 24h."
 
+        # ── AMBIGUITY DETECTION ───────────────────────────────────────────
+        _vague_refs = [
+            "the project", "my stuff", "that thing", "the issue", "the latest",
+            "the update", "the repo", "the agent", "the code", "the bug",
+            "the error", "the result", "the output", "the file", "the task",
+            "the status", "the progress", "check on", "check the latest",
+        ]
+        _clear_verbs = [
+            "search", "look up", "find me", "run", "execute", "calculate",
+            "remember", "store", "save", "read", "show me", "write", "explain",
+            "what is", "what are", "how do", "how does", "tell me", "define",
+            "list", "summarize", "compare", "debug", "fix", "help me",
+        ]
+        _prompt_lower = prompt.lower().strip()
+        _word_count = len(_prompt_lower.split())
+        _is_short = _word_count <= 8
+        _has_vague_ref = any(v in _prompt_lower for v in _vague_refs)
+        _has_clear_verb = any(v in _prompt_lower for v in _clear_verbs)
+        if _is_short and _has_vague_ref and not _has_clear_verb:
+            return (
+                "I want to make sure I help with the right thing — could you be a bit more specific? "
+                "For example, are you asking about the GitHub repo, the eval scores, a specific file, "
+                "or something else?"
+            )
         memory_context = self._get_memory_context(prompt)
         messages = self._build_messages(prompt, memory_context)
-
         raw_output = None
         used_model = None
         used_provider = None
-
         # ── NORMAL MODE: native tool calling ─────────────────────────────
         if not self.deep_reasoning_mode:
             model, provider = self.router.select_tool_capable_model(prompt, self.available_models)
@@ -1570,7 +1592,31 @@ class FreeAgent:
         if self.tokens_used_today >= self.daily_token_limit:
             yield "⚠️ Daily token limit reached. Resets in 24h."
             return
-
+        # ── AMBIGUITY DETECTION ───────────────────────────────────────────
+        _vague_refs = [
+            "the project", "my stuff", "that thing", "the issue", "the latest",
+            "the update", "the repo", "the agent", "the code", "the bug",
+            "the error", "the result", "the output", "the file", "the task",
+            "the status", "the progress", "check on", "check the latest",
+        ]
+        _clear_verbs = [
+            "search", "look up", "find me", "run", "execute", "calculate",
+            "remember", "store", "save", "read", "show me", "write", "explain",
+            "what is", "what are", "how do", "how does", "tell me", "define",
+            "list", "summarize", "compare", "debug", "fix", "help me",
+        ]
+        _prompt_lower = prompt.lower().strip()
+        _word_count = len(_prompt_lower.split())
+        _is_short = _word_count <= 8
+        _has_vague_ref = any(v in _prompt_lower for v in _vague_refs)
+        _has_clear_verb = any(v in _prompt_lower for v in _clear_verbs)
+        if _is_short and _has_vague_ref and not _has_clear_verb:
+            yield (
+                "I want to make sure I help with the right thing — could you be a bit more specific? "
+                "For example, are you asking about the GitHub repo, the eval scores, a specific file, "
+                "or something else?"
+            )
+            return
         # ── FILE READING INTERCEPTOR ──────────────────────────────────────
         simple_read_only = any(word in prompt.lower() for word in ["show me ", "check line", "what is on line", "line "])
         has_analysis_request = any(word in prompt.lower() for word in [
