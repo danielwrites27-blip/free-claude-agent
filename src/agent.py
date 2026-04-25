@@ -1306,7 +1306,9 @@ class FreeAgent:
                 "'Look up', or 'Find me', you MUST call the appropriate tool even if you "
                 "already know the answer. Never skip a tool call the user has explicitly requested.\n\n"
                 "MEMORY TOOL RULE:\n"
-                "When the user says 'remember', 'store', or 'save' something, you MUST call store_memory. "
+                "When the user says 'remember', 'store', 'save', 'my name is', 'please remember', or 'remember that', "
+                "you MUST call store_memory immediately — even if you think you already know the information. "
+                "Do NOT just acknowledge. Do NOT say 'already remembered'. CALL store_memory. "
                 "When the user asks 'what do you know', 'do you remember', 'what is my', or 'what did I tell you', "
                 "you MUST call recall_memory before answering. "
                 "Never call web_search to answer questions about the user's personal preferences or past conversations.\n\n"
@@ -1754,6 +1756,20 @@ class FreeAgent:
                     "This prompt contains code and an explicit instruction to run it. "
                     "You MUST call the run_python tool to execute the code and show actual output. "
                     "Do NOT answer from knowledge alone — run the code and report the real result."
+                )
+            })
+        has_memory_store_trigger = any(t in prompt.lower() for t in [
+            "my name is", "please remember", "remember that", "remember this",
+            "store this", "save this", "don't forget",
+        ])
+        if has_memory_store_trigger:
+            messages.append({
+                "role": "system",
+                "content": (
+                    "The user is explicitly asking you to store information. "
+                    "You MUST call store_memory right now. "
+                    "Do NOT say 'already remembered'. Do NOT acknowledge without calling the tool. "
+                    "CALL store_memory immediately as your first action."
                 )
             })
         full_response = ""
