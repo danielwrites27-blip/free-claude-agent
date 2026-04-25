@@ -1132,7 +1132,7 @@ class FreeAgent:
             "bug", "error", "fix", "broken", "not working", "issue", "debug",
             "not saving", "isn't", "doesn't",
             "caveman mode", "token compression", "compress response", "routing logic", "model router",
-            "memory.py", "recall function", "bm25", "chromadb",
+            "memory.py", "recall function", "bm25 search", "chromadb",
             "code_runner", "code runner",
             "app.py", "agent.py", "caveman.py", "router.py",
         ]
