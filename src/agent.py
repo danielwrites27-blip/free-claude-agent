@@ -1690,7 +1690,7 @@ class FreeAgent:
         ]
         tool_override_triggers = [
             "search for", "search the", "look up", "find me", "find the", "fetch", "calculate", "compute",
-            "run this", "execute", "store memory", "remember this", "recall", "retrieve",
+            "run this", "execute", "store memory", "remember this", "remember that", "please remember", "my name is", "recall", "retrieve",
             "latest", "current", "today", "news", "price", "weather",
             "read file", "open file", "write",
             "percentage", "token limit", "how many", "how much",
