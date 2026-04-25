@@ -558,10 +558,20 @@ def main():
                 "overall_pass": False,
             })
 
-        # Delay between calls (not after the last one)
+        # Adaptive delay between calls (not after the last one)
         if i < len(all_evals) - 1:
-            print(f"  Sleeping {args.delay}s...")
-            time.sleep(args.delay)
+            elapsed_s = result.get("elapsed_s", 0)
+            if elapsed_s < 10:
+                # Fast response = Cerebras answered = high TPM usage → long sleep
+                adaptive = max(args.delay, 20)
+            elif elapsed_s < 30:
+                # Medium response = partial fallback → moderate sleep
+                adaptive = max(args.delay, 10)
+            else:
+                # Slow response = deep fallback used → minimal sleep
+                adaptive = max(args.delay, 3)
+            print(f"  Sleeping {adaptive}s (elapsed={elapsed_s}s)...")
+            time.sleep(adaptive)
 
     # ── Print summary ─────────────────────────────────────────────────────────
     print_summary(all_results)
