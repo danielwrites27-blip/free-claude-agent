@@ -19,7 +19,7 @@ import tiktoken
 
 from .caveman import CAVEMAN_SYSTEM_PROMPT, compress_response
 from .memory import TokenEfficientMemory
-from .router import ModelRouter, GROQ, SAMBANOVA, CEREBRAS, NVIDIA, MODAL, MINIMAX, OPENROUTER, TOGETHER, CLOUDFLARE
+from .router import ModelRouter, GROQ, SAMBANOVA, CEREBRAS, NVIDIA, MODAL, MINIMAX, OPENROUTER, TOGETHER, CLOUDFLARE, get_healthy_model
 
 # Max turns to keep in live conversation context (before summarizing to memory)
 MAX_HISTORY_TURNS = 12  # 12 pairs = 24 messages
@@ -690,12 +690,12 @@ class FreeAgent:
         # Fallback chain for rate limits — primary → 8B → Cerebras → SambaNova
         tool_models_to_try = [(model, provider)]
         if model != "llama-3.1-8b-instant":
-            tool_models_to_try.append(("llama-3.1-8b-instant", GROQ))
-        tool_models_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
-        tool_models_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
-        tool_models_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
+            tool_models_to_try.append((get_healthy_model("groq", "llama-3.1-8b-instant"), GROQ))
+        tool_models_to_try.append((get_healthy_model("cerebras", "qwen-3-235b-a22b-instruct-2507"), CEREBRAS))
+        tool_models_to_try.append((get_healthy_model("nvidia_nemotron", "nvidia/nemotron-3-nano-30b-a3b"), NVIDIA))
+        tool_models_to_try.append((get_healthy_model("sambanova", "Meta-Llama-3.3-70B-Instruct"), SAMBANOVA))
         if self.openrouter_glm_client:
-            tool_models_to_try.append(("z-ai/glm-5.1", OPENROUTER))
+            tool_models_to_try.append((get_healthy_model("openrouter", "z-ai/glm-5.1"), OPENROUTER))
         if self.together_client:
             tool_models_to_try.append(("zai-org/GLM-5.1", TOGETHER))
         # ── CODING TASK: promote GLM-5.1 to first fallback position ──
@@ -704,7 +704,7 @@ class FreeAgent:
         if is_coding_task:
             tool_models_to_try = [m for m in tool_models_to_try if m[0] != "llama-3.1-8b-instant"]
         if is_coding_task and self.openrouter_glm_client:
-            glm_entry = ("z-ai/glm-5.1", OPENROUTER)
+            glm_entry = (get_healthy_model("openrouter", "z-ai/glm-5.1"), OPENROUTER)
             tool_models_to_try = [tool_models_to_try[0], glm_entry] + [
                 m for m in tool_models_to_try[1:] if m != glm_entry
             ]
@@ -830,12 +830,12 @@ class FreeAgent:
         seen_tool_calls = set()  # loop detection: track (tool_name, args) pairs
         tool_models_to_try = [(model, provider)]
         if model != "llama-3.1-8b-instant":
-            tool_models_to_try.append(("llama-3.1-8b-instant", GROQ))
-        tool_models_to_try.append(("qwen-3-235b-a22b-instruct-2507", CEREBRAS))
-        tool_models_to_try.append(("nvidia/nemotron-3-nano-30b-a3b", NVIDIA))
-        tool_models_to_try.append(("Meta-Llama-3.3-70B-Instruct", SAMBANOVA))
+            tool_models_to_try.append((get_healthy_model("groq", "llama-3.1-8b-instant"), GROQ))
+        tool_models_to_try.append((get_healthy_model("cerebras", "qwen-3-235b-a22b-instruct-2507"), CEREBRAS))
+        tool_models_to_try.append((get_healthy_model("nvidia_nemotron", "nvidia/nemotron-3-nano-30b-a3b"), NVIDIA))
+        tool_models_to_try.append((get_healthy_model("sambanova", "Meta-Llama-3.3-70B-Instruct"), SAMBANOVA))
         if self.openrouter_glm_client:
-            tool_models_to_try.append(("z-ai/glm-5.1", OPENROUTER))
+            tool_models_to_try.append((get_healthy_model("openrouter", "z-ai/glm-5.1"), OPENROUTER))
         if self.together_client:
             tool_models_to_try.append(("zai-org/GLM-5.1", TOGETHER))
         # ── CODING TASK: promote GLM-5.1 to first fallback position ──
@@ -844,7 +844,7 @@ class FreeAgent:
         if is_coding_task:
             tool_models_to_try = [m for m in tool_models_to_try if m[0] != "llama-3.1-8b-instant"]
         if is_coding_task and self.openrouter_glm_client:
-            glm_entry = ("z-ai/glm-5.1", OPENROUTER)
+            glm_entry = (get_healthy_model("openrouter", "z-ai/glm-5.1"), OPENROUTER)
             tool_models_to_try = [tool_models_to_try[0], glm_entry] + [
                 m for m in tool_models_to_try[1:] if m != glm_entry
             ]
