@@ -27,3 +27,4 @@ huggingface_hub==0.23.5
 # File Upload and Reading
 pymupdf
 python-docx
+apscheduler==3.10.4

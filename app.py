@@ -2,7 +2,9 @@ import gradio as gr
 import os
 import logging
 import sys
+import subprocess
 from logging.handlers import RotatingFileHandler
+from apscheduler.schedulers.background import BackgroundScheduler
 from src.agent import FreeAgent
 
 # ─── Logging setup ────────────────────────────────────────────────────────────
@@ -315,5 +317,28 @@ class _Tee:
         return self.streams[0].fileno()
 sys.stdout = _Tee(sys.__stdout__, _log_file)
 sys.stderr = _Tee(sys.__stderr__, _log_file)
+
+# ─── Daily health check scheduler ─────────────────────────────────────────────
+def _run_health_check_job():
+    """Run model health check as subprocess — isolated, safe, no import conflicts."""
+    logger.info("[Scheduler] Running daily model health check...")
+    try:
+        result = subprocess.run(
+            ["python", "/app/src/model_health_check.py"],
+            capture_output=True, text=True, timeout=300
+        )
+        if result.returncode == 0:
+            logger.info("[Scheduler] Health check completed successfully")
+        else:
+            logger.warning(f"[Scheduler] Health check exited {result.returncode}: {result.stderr[:200]}")
+    except subprocess.TimeoutExpired:
+        logger.warning("[Scheduler] Health check timed out after 300s")
+    except Exception as e:
+        logger.warning(f"[Scheduler] Health check failed: {e}")
+
+_scheduler = BackgroundScheduler(timezone="UTC")
+_scheduler.add_job(_run_health_check_job, "cron", hour=0, minute=0, id="daily_health_check")
+_scheduler.start()
+logger.info("[Scheduler] Daily health check scheduled at 00:00 UTC")
 
 demo.launch(**launch_kwargs)
