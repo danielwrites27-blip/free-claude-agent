@@ -3,7 +3,13 @@ Smart model routing: Cheapest capable model for each query.
 Supports Groq, Sambanova, Cerebras, NVIDIA NIM — all free tier.
 """
 import re
-from typing import Literal, Dict, Tuple
+import json
+import time
+import logging
+from pathlib import Path
+from typing import Literal, Dict, Tuple, Optional
+
+log = logging.getLogger(__name__)
 
 # All supported model names across providers
 ModelName = Literal[
@@ -51,6 +57,66 @@ TOOL_CAPABLE_MODELS = {
     "Meta-Llama-3.1-8B-Instruct",         # Sambanova
     "nvidia/nemotron-3-nano-30b-a3b",     # NVIDIA NIM — S15 benchmark confirmed
 }
+
+# ---------------------------------------------------------------------------
+# models.json dynamic registry — 5-minute TTL cache
+# Populated by model_health_check.py. Falls back to hardcoded chain if missing.
+# ---------------------------------------------------------------------------
+
+import os as _os
+_MODELS_JSON_PATH = Path(_os.getenv("MODELS_JSON_PATH", "/app/data/models.json"))
+_MODELS_CACHE: Optional[dict] = None
+_MODELS_CACHE_TS: float = 0.0
+_MODELS_CACHE_TTL: float = 300.0  # 5 minutes
+
+
+def _load_registry() -> dict:
+    """
+    Load models.json with 5-minute TTL in-memory cache.
+    Returns {} if file missing or corrupt — caller falls back to hardcoded chain.
+    """
+    global _MODELS_CACHE, _MODELS_CACHE_TS
+    now = time.monotonic()
+    if _MODELS_CACHE is not None and (now - _MODELS_CACHE_TS) < _MODELS_CACHE_TTL:
+        return _MODELS_CACHE
+    if not _MODELS_JSON_PATH.exists():
+        _MODELS_CACHE = {}
+        _MODELS_CACHE_TS = now
+        return {}
+    try:
+        data = json.loads(_MODELS_JSON_PATH.read_text(encoding="utf-8"))
+        _MODELS_CACHE = data
+        _MODELS_CACHE_TS = now
+        log.debug(f"models.json loaded from disk ({_MODELS_JSON_PATH})")
+        return data
+    except Exception as e:
+        log.warning(f"models.json parse error: {e} — using hardcoded chain")
+        _MODELS_CACHE = {}
+        _MODELS_CACHE_TS = now
+        return {}
+
+
+def get_healthy_model(provider_id: str, fallback_model: str) -> str:
+    """
+    Return the current healthy model for a provider from models.json.
+    If registry missing, provider absent, or status not 'ok', returns fallback_model.
+
+    provider_id must match the keys in model_health_check.py PROVIDERS dict:
+      'cerebras', 'sambanova', 'nvidia', 'nvidia_nemotron', 'openrouter', 'groq'
+    """
+    registry = _load_registry()
+    entry = registry.get(provider_id)
+    if not entry:
+        return fallback_model
+    status = entry.get("status", "unknown")
+    if status not in ("ok",):
+        # busy / quota_exhausted / dead — fall back to hardcoded model
+        log.debug(f"models.json: {provider_id} status={status} — using hardcoded fallback")
+        return fallback_model
+    model = entry.get("current", fallback_model)
+    if model != fallback_model:
+        log.debug(f"models.json: {provider_id} → {model} (overrides hardcoded {fallback_model})")
+    return model
 
 
 class ModelRouter:
