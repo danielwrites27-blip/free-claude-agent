@@ -553,14 +553,16 @@ def run_health_check():
 
 
 if __name__ == "__main__":
-    import fcntl
+    import fcntl, random
+    # Small random jitter so two simultaneous starts don't race the lock
+    time.sleep(random.uniform(0.1, 2.0))
     lock_path = Path(os.getenv("HEALTH_LOCK_PATH", "/app/data/health_check.lock"))
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_file = open(str(lock_path), "w")
     try:
         fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
-        log.info("Another health check instance is running — exiting")
+        # Another instance won the race — exit silently
         raise SystemExit(0)
     try:
         run_health_check()
