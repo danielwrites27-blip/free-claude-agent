@@ -257,7 +257,7 @@ def _call_model(api_url: str, api_key: str, model: str) -> tuple[int, str, str]:
             "stream": False,
         }
         try:
-            resp = requests.post(api_url, headers=headers, json=payload, timeout=30)
+            resp = requests.post(api_url, headers=headers, json=payload, timeout=12)
         except requests.exceptions.Timeout:
             log.warning(f"  Timeout on {model} ({q['label']})")
             continue
@@ -274,7 +274,7 @@ def _call_model(api_url: str, api_key: str, model: str) -> tuple[int, str, str]:
                 log.info("  Retrying once after 10s...")
                 time.sleep(10)
                 try:
-                    resp2 = requests.post(api_url, headers=headers, json=payload, timeout=30)
+                    resp2 = requests.post(api_url, headers=headers, json=payload, timeout=12)
                     if resp2.status_code == 200:
                         # retry succeeded, continue scoring
                         resp = resp2
@@ -301,7 +301,7 @@ def _call_model(api_url: str, api_key: str, model: str) -> tuple[int, str, str]:
 
         try:
             data = resp.json()
-            answer = data["choices"][0]["message"]["content"]
+            answer = data["choices"][0]["message"]["content"] or ""
         except Exception as e:
             log.warning(f"  Parse error on {model}: {e}")
             continue
@@ -465,11 +465,12 @@ def run_health_check():
                 )
                 changed = True
 
+        # Save incrementally after each provider so partial results survive crashes
+        if changed:
+            _save_models_json(registry)
+
         # Small pause between providers to avoid hammering APIs
         time.sleep(2)
-
-    if changed:
-        _save_models_json(registry)
 
     # Send Telegram summary
     if alerts:
