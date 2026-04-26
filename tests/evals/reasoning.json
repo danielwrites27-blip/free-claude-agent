@@ -59,10 +59,11 @@
     "expected_tool": null,
     "expected_contains": [
       "rank",
-      "Trade-off"
+      "trade-off"
     ],
     "must_not_contain": [],
-    "judge_rubric": "Did the agent explain that higher k smooths rank differences (good for blending), but reduces the boost that top-1 BM25 results get?"
+    "judge_rubric": "Did the agent explain that higher k smooths rank differences (good for blending), but reduces the boost that top-1 BM25 results get?",
+    "tool_optional": true
   },
   {
     "id": "rsn_006",
