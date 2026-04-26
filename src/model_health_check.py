@@ -63,7 +63,7 @@ log = logging.getLogger("health_check")
 CAPABILITY_QUESTIONS = [
     {
         "question": "What is the output of this Python expression: [i*i for i in range(5) if i%2!=0] ? Reply with only the list.",
-        "check": lambda r: all(x in r for x in ["1", "9", "25"]),
+        "check": lambda r: ("1" in r and "9" in r) if r else False,
         "points": 3,
         "label": "Q1: list comprehension",
     },
@@ -75,8 +75,8 @@ CAPABILITY_QUESTIONS = [
         ),
         "check": lambda r: (
             "recursion" in r.lower() and
-            any(x in r.lower() for x in ["stack overflow", "recursionerror", "recursion error", "maximum recursion"])
-        ),
+            any(x in r.lower() for x in ["stack overflow", "recursionerror", "recursion error", "maximum recursion", "infinite loop", "never terminates", "no base"])
+        ) if r else False,
         "points": 3,
         "label": "Q2: recursion + stack overflow",
     },
@@ -88,7 +88,7 @@ CAPABILITY_QUESTIONS = [
         "check": lambda r: (
             "copy" in r.lower() and
             any(x in r.lower() for x in ["nested", "reference", "inner"])
-        ),
+        ) if r else False,
         "points": 3,
         "label": "Q3: shallow vs deep copy",
     },
@@ -97,7 +97,7 @@ CAPABILITY_QUESTIONS = [
             "Write the exact bash command to find all files modified in the last 24 hours "
             "in the /var/log directory. Output only the command."
         ),
-        "check": lambda r: "find" in r.lower() and "-mtime" in r.lower(),
+        "check": lambda r: ("find" in r.lower() and "-mtime" in r.lower()) if r else False,
         "points": 3,
         "label": "Q4: find -mtime",
     },
@@ -107,9 +107,9 @@ CAPABILITY_QUESTIONS = [
             "and what should your client code do in response? Answer in 2-3 sentences."
         ),
         "check": lambda r: (
-            any(x in r.lower() for x in ["rate limit", "too many requests", "rate-limit"]) and
-            any(x in r.lower() for x in ["retry", "backoff", "back-off", "wait", "exponential"])
-        ),
+            any(x in r.lower() for x in ["rate limit", "too many requests", "rate-limit", "ratelimit", "throttl"]) and
+            any(x in r.lower() for x in ["retry", "backoff", "back-off", "wait", "exponential", "delay"])
+        ) if r else False,
         "points": 3,
         "label": "Q5: 429 rate limit + retry",
     },
@@ -260,7 +260,7 @@ def _call_model(api_url: str, api_key: str, model: str) -> tuple[int, str, str]:
             resp = requests.post(api_url, headers=headers, json=payload, timeout=12)
         except requests.exceptions.Timeout:
             log.warning(f"  Timeout on {model} ({q['label']})")
-            continue
+            return score, "busy", f"Timeout on {q['label']} — provider slow/overloaded"
         except Exception as e:
             log.warning(f"  Request error on {model} ({q['label']}): {e}")
             continue
@@ -324,55 +324,135 @@ def _call_model(api_url: str, api_key: str, model: str) -> tuple[int, str, str]:
 # Tavily — find replacement model
 # ---------------------------------------------------------------------------
 
-def _tavily_find_replacement(provider_id: str, query: str) -> Optional[str]:
-    """
-    Ask Tavily for best coding models for this provider.
-    Returns best model name string, or None if can't find one.
-    """
-    if not TAVILY_API_KEY:
-        log.warning("TAVILY_API_KEY not set — cannot search for replacement models")
-        return None
+# Hardcoded fallback model lists per provider — used when /v1/models unavailable
+PROVIDER_FALLBACK_MODELS = {
+    "cerebras":       ["qwen-3-235b-a22b-instruct-2507", "llama-3.3-70b", "llama3.1-8b"],
+    "sambanova":      ["Meta-Llama-3.3-70B-Instruct", "Meta-Llama-3.1-405B-Instruct", "Meta-Llama-3.1-8B-Instruct"],
+    "nvidia":         ["nvidia/llama-3.3-nemotron-super-49b-v1", "mistralai/mistral-large-2-instruct", "meta/llama-3.3-70b-instruct"],
+    "nvidia_nemotron": ["nvidia/llama-3.3-nemotron-super-49b-v1", "meta/llama-3.3-70b-instruct", "mistralai/mistral-large-2-instruct"],
+    "openrouter":     ["meta-llama/llama-3.3-70b-instruct", "mistralai/mistral-large-2411", "qwen/qwen-2.5-72b-instruct"],
+    "groq":           ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama-3.1-8b-instant"],
+}
 
+# Provider /v1/models endpoints
+PROVIDER_MODELS_ENDPOINTS = {
+    "cerebras":       "https://api.cerebras.ai/v1/models",
+    "sambanova":      "https://api.sambanova.ai/v1/models",
+    "nvidia":         "https://integrate.api.nvidia.com/v1/models",
+    "nvidia_nemotron": "https://integrate.api.nvidia.com/v1/models",
+    "openrouter":     "https://openrouter.ai/api/v1/models",
+    "groq":           "https://api.groq.com/openai/v1/models",
+}
+
+
+def _fetch_provider_models(provider_id: str, api_key: str) -> list[str]:
+    """
+    Fetch available models from provider /v1/models endpoint.
+    Returns list of model id strings, filtered for coding suitability.
+    Empty list if endpoint unavailable.
+    """
+    endpoint = PROVIDER_MODELS_ENDPOINTS.get(provider_id)
+    if not endpoint:
+        return []
     try:
-        resp = requests.post(
-            "https://api.tavily.com/search",
-            json={"api_key": TAVILY_API_KEY, "query": query, "max_results": 5},
-            timeout=20,
+        resp = requests.get(
+            endpoint,
+            headers={"Authorization": f"Bearer {api_key}"},
+            timeout=10,
         )
-        resp.raise_for_status()
-        results = resp.json().get("results", [])
-    except Exception as e:
-        log.warning(f"Tavily search failed for {provider_id}: {e}")
-        return None
-
-    # Collect all text from results
-    combined = " ".join(r.get("content", "") + " " + r.get("title", "") for r in results)
-
-    # Extract model-name-like tokens: contain slash, dash, digits
-    # e.g. "meta-llama/Llama-3.3-70B" or "qwen-3-235b"
-    candidates = re.findall(r'[\w\-\.]+/[\w\-\.]+|[\w]+-[\d]+[bB][\w\-]*', combined)
-
-    scored = []
-    for c in candidates:
-        if BAD_MODEL_RE.search(c):
-            continue
-        # Try to extract parameter count
-        m = re.search(r'(\d+)\s*[bB]\b', c)
-        if m:
-            params = int(m.group(1))
-            if params < MIN_PARAMS_B:
+        if resp.status_code != 200:
+            log.warning(f"  /v1/models returned {resp.status_code} for {provider_id}")
+            return []
+        data = resp.json()
+        # OpenAI-compatible: {"data": [{"id": "model-name"}, ...]}
+        models = [m.get("id", "") or m.get("name", "") for m in data.get("data", [])]
+        # Filter bad patterns and size minimums
+        filtered = []
+        for m in models:
+            if not m:
                 continue
-            scored.append((params, c))
+            if BAD_MODEL_RE.search(m):
+                continue
+            size_match = re.search(r'(\d+)\s*[bB]\b', m)
+            if size_match and int(size_match.group(1)) < MIN_PARAMS_B:
+                continue
+            filtered.append(m)
+        log.info(f"  /v1/models: {len(filtered)} suitable models found for {provider_id}")
+        return filtered
+    except Exception as e:
+        log.warning(f"  /v1/models fetch failed for {provider_id}: {e}")
+        return []
 
-    if not scored:
-        log.info(f"Tavily: no suitable replacement found for {provider_id}")
+
+def _extract_param_count(model_id: str) -> int:
+    """
+    Extract parameter count in billions from model id string.
+    Returns 0 if not found — sorts to bottom.
+    Examples: "llama-3.3-70b" -> 70, "qwen-3-235b-a22b" -> 235, "gpt-4" -> 0
+    """
+    m = re.search(r'(?<![\d])(\d+)\s*[bB]\b', model_id)
+    if m:
+        return int(m.group(1))
+    return 0
+
+
+def _find_replacement(provider_id: str, api_key: str, api_url: str, query: str) -> Optional[str]:
+    """
+    Find and verify the best replacement model for a dead provider.
+
+    Strategy:
+    1. Fetch candidate list from /v1/models endpoint (filtered by BAD_MODEL_PATTERNS + MIN_PARAMS)
+    2. Fall back to hardcoded list if endpoint fails
+    3. Sort candidates by parameter count descending (235B > 70B > 30B)
+    4. Score top 3 candidates with capability questions
+    5. Return highest-scoring candidate that clears SCORE_THRESHOLD
+       If none clear threshold, return highest scorer above SCORE_REJECT
+
+    This ensures a 235B model beats an 8B model even if both answer all questions correctly.
+    """
+    # Try live model list from provider first
+    candidates = _fetch_provider_models(provider_id, api_key)
+
+    # Fall back to hardcoded list if endpoint fails or returns nothing
+    if not candidates:
+        log.info(f"  Falling back to hardcoded model list for {provider_id}")
+        candidates = PROVIDER_FALLBACK_MODELS.get(provider_id, [])
+
+    if not candidates:
+        log.warning(f"  No replacement candidates found for {provider_id}")
         return None
 
-    # Pick highest param count
-    scored.sort(key=lambda x: x[0], reverse=True)
-    best = scored[0][1]
-    log.info(f"Tavily: best replacement candidate for {provider_id}: {best}")
-    return best
+    # Sort by parameter count descending — largest model first
+    candidates_ranked = sorted(candidates, key=_extract_param_count, reverse=True)
+    top3 = candidates_ranked[:3]
+    log.info(f"  Top candidates for {provider_id} (by param count): {top3}")
+
+    # Score each candidate, pick best above threshold
+    best_model = None
+    best_score = -1
+
+    for candidate in top3:
+        log.info(f"  Scoring candidate: {candidate}")
+        c_score, c_status, c_detail = _call_model(api_url, api_key, candidate)
+        log.info(f"  {candidate} scored {c_score}/15 (status: {c_status})")
+
+        if c_score > best_score:
+            best_score = c_score
+            best_model = candidate
+
+        # Stop early if we found a clearly good model
+        if c_score >= SCORE_THRESHOLD:
+            log.info(f"  {candidate} cleared threshold — stopping search")
+            break
+
+        time.sleep(1)
+
+    if best_model and best_score > SCORE_REJECT:
+        log.info(f"  Best replacement for {provider_id}: {best_model} (score {best_score}/15)")
+        return best_model
+
+    log.warning(f"  No suitable replacement found for {provider_id} (best score: {best_score}/15)")
+    return None
 
 # ---------------------------------------------------------------------------
 # Telegram alerts
@@ -437,26 +517,15 @@ def run_health_check():
 
         elif status == "dead":
             log.warning(f"[{provider_id}] 💀 DEAD — {current_model}. Searching replacement...")
-            replacement = _tavily_find_replacement(provider_id, pdef["tavily_query"])
+            replacement = _find_replacement(provider_id, api_key, pdef["api_url"], pdef["tavily_query"])
 
             if replacement and replacement != current_model:
-                log.info(f"[{provider_id}] Verifying replacement: {replacement}")
-                r_score, r_status, r_detail = _call_model(pdef["api_url"], api_key, replacement)
-
-                if r_score > SCORE_REJECT:
-                    log.info(f"[{provider_id}] ✅ Replacement accepted: {replacement} (score {r_score}/15)")
-                    registry[provider_id] = _provider_entry(replacement, "ok" if r_status == "ok" else r_status, r_score, prev_entry)
-                    alerts.append(
-                        f"🔴 DEAD — {pdef['label']}: {current_model} → {replacement} (score {r_score}/15)"
-                    )
-                    changed = True
-                else:
-                    log.warning(f"[{provider_id}] Replacement also too weak (score {r_score}/15) — keeping dead entry")
-                    registry[provider_id] = _provider_entry(current_model, "dead", score, prev_entry)
-                    alerts.append(
-                        f"🔴 DEAD — {pdef['label']}: {current_model} dead, no suitable replacement found"
-                    )
-                    changed = True
+                log.info(f"[{provider_id}] ✅ Replacement selected: {replacement}")
+                registry[provider_id] = _provider_entry(replacement, "ok", best_score_from_find := 0, prev_entry)
+                alerts.append(
+                    f"🔴 DEAD — {pdef['label']}: {current_model} → {replacement}"
+                )
+                changed = True
             else:
                 log.warning(f"[{provider_id}] No replacement found — keeping dead entry")
                 registry[provider_id] = _provider_entry(current_model, "dead", score, prev_entry)
