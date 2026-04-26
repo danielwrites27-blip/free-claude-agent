@@ -4,6 +4,6 @@ chown -R appuser:appuser /app/data 2>/dev/null || true
 export SENTENCE_TRANSFORMERS_HOME=/app/data/sentence_transformers
 
 # Run model health check at startup (background, as appuser)
-gosu appuser python /app/src/model_health_check.py >> /app/data/health_check.log 2>&1 &
+gosu appuser python /app/src/model_health_check.py &
 
 exec gosu appuser python /app/app.py
