@@ -8,12 +8,13 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from src.agent import FreeAgent
 
 # ─── Logging setup ────────────────────────────────────────────────────────────
+_log_path = os.environ.get("LOG_PATH", "/app/agent.log")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        RotatingFileHandler("/app/agent.log", maxBytes=5*1024*1024, backupCount=2),
+        RotatingFileHandler(_log_path, maxBytes=5*1024*1024, backupCount=2),
     ]
 )
 logger = logging.getLogger("agent")
@@ -304,7 +305,7 @@ if auth_user and auth_pass:
     launch_kwargs["auth"] = (auth_user, auth_pass)
 
 # Tee stdout to log file so we can tail -f /app/agent.log
-_log_file = open("/app/agent.log", "a", buffering=1)
+_log_file = open(_log_path, "a", buffering=1)
 class _Tee:
     def __init__(self, *streams): self.streams = streams
     def write(self, data):
