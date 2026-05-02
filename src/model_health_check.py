@@ -463,9 +463,11 @@ def _telegram(msg: str):
     ntfy_topic = os.environ.get("NTFY_TOPIC")
     if ntfy_topic:
         try:
+            import re
+            plain = re.sub(r"<[^>]+>", "", msg)  # strip HTML tags for ntfy
             requests.post(
                 f"https://ntfy.sh/{ntfy_topic}",
-                data=msg.encode("utf-8"),
+                data=plain.encode("utf-8"),
                 headers={"Title": "Free Claude Agent Health Check"},
                 timeout=10,
             )
