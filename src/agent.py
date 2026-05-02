@@ -254,13 +254,14 @@ class FreeAgent:
         if cerebras_key:
             try:
                 from cerebras.cloud.sdk import Cerebras
-                self.cerebras_client = Cerebras(api_key=cerebras_key)
+                self.cerebras_client = Cerebras(api_key=cerebras_key, max_retries=0)
             except ImportError:
                 try:
                     from openai import OpenAI
                     self.cerebras_client = OpenAI(
                         api_key=cerebras_key,
-                        base_url="https://api.cerebras.ai/v1"
+                        base_url="https://api.cerebras.ai/v1",
+                        max_retries=0
                     )
                 except ImportError:
                     pass
