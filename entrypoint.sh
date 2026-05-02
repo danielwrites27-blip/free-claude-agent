@@ -1,9 +1,7 @@
 #!/bin/bash
-# Fix volume permissions then drop to appuser
-chown -R appuser:appuser /app/data 2>/dev/null || true
 export SENTENCE_TRANSFORMERS_HOME=/app/data/sentence_transformers
 
-# Run model health check at startup (background, as appuser)
-gosu appuser python /app/src/model_health_check.py &
+# Run model health check at startup (background)
+python /app/src/model_health_check.py &
 
-exec gosu appuser python /app/app.py
+exec python /app/app.py
