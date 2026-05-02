@@ -459,6 +459,22 @@ def _find_replacement(provider_id: str, api_key: str, api_url: str, query: str) 
 # ---------------------------------------------------------------------------
 
 def _telegram(msg: str):
+    # Try ntfy.sh first — works on HF Spaces (Telegram is blocked)
+    ntfy_topic = os.environ.get("NTFY_TOPIC")
+    if ntfy_topic:
+        try:
+            requests.post(
+                f"https://ntfy.sh/{ntfy_topic}",
+                data=msg.encode("utf-8"),
+                headers={"Title": "Free Claude Agent Health Check"},
+                timeout=10,
+            )
+            log.info("ntfy alert sent")
+            return
+        except Exception as e:
+            log.warning(f"ntfy send failed: {e}")
+
+    # Telegram fallback
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         log.info(f"[Telegram skipped — no token/chat_id] {msg}")
         return
@@ -468,6 +484,7 @@ def _telegram(msg: str):
             json={"chat_id": TELEGRAM_CHAT_ID, "text": msg, "parse_mode": "HTML"},
             timeout=10,
         )
+        log.info("Telegram alert sent")
     except Exception as e:
         log.warning(f"Telegram send failed: {e}")
 
