@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src/
 COPY app.py requirements.txt entrypoint.sh ./
 
-RUN useradd -m appuser && mkdir -p /app/data/chromadb && chown -R appuser:appuser /app
+RUN useradd -m appuser && mkdir -p /app/data/chromadb && mkdir -p /data/chromadb /data/sentence_transformers && chown -R appuser:appuser /app /data
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
