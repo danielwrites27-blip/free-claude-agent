@@ -30,7 +30,7 @@ ModelName = Literal[
     # Modal (GLM-5.1-FP8 — #1 SWE-Bench Pro, 754B MoE, 40B active, 200K context)
     "zai-org/GLM-5.1-FP8",
     # OpenRouter / Together AI (GLM-5.1 — permanent fallback after Modal)
-    "z-ai/glm-5.1",
+    "qwen/qwen3-235b-a22b:free",
     # MiniMax M2.7 (via NVIDIA NIM — general reasoning)
     "minimaxai/minimax-m2.7",
 ]

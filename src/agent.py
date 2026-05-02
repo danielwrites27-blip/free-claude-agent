@@ -483,7 +483,7 @@ class FreeAgent:
         if self.modal_client:
             self.available_models["zai-org/GLM-5.1-FP8"] = {"provider": MODAL, "rpd": 10000}
         if self.openrouter_glm_client:
-            self.available_models["z-ai/glm-5.1"] = {"provider": OPENROUTER, "rpd": 10000}
+            self.available_models["qwen/qwen3-235b-a22b:free"] = {"provider": OPENROUTER, "rpd": 10000}
         if self.together_client:
             self.available_models["zai-org/GLM-5.1"] = {"provider": TOGETHER, "rpd": 10000}
         if self.minimax_client:
@@ -696,7 +696,7 @@ class FreeAgent:
         tool_models_to_try.append((get_healthy_model("nvidia_nemotron", "nvidia/nemotron-3-nano-30b-a3b"), NVIDIA))
         tool_models_to_try.append((get_healthy_model("sambanova", "Meta-Llama-3.3-70B-Instruct"), SAMBANOVA))
         if self.openrouter_glm_client:
-            tool_models_to_try.append((get_healthy_model("openrouter", "z-ai/glm-5.1"), OPENROUTER))
+            tool_models_to_try.append((get_healthy_model("openrouter", "qwen/qwen3-235b-a22b:free"), OPENROUTER))
         if self.together_client:
             tool_models_to_try.append(("zai-org/GLM-5.1", TOGETHER))
         # ── CODING TASK: promote GLM-5.1 to first fallback position ──
@@ -705,7 +705,7 @@ class FreeAgent:
         if is_coding_task:
             tool_models_to_try = [m for m in tool_models_to_try if m[0] != "llama-3.1-8b-instant"]
         if is_coding_task and self.openrouter_glm_client:
-            glm_entry = (get_healthy_model("openrouter", "z-ai/glm-5.1"), OPENROUTER)
+            glm_entry = (get_healthy_model("openrouter", "qwen/qwen3-235b-a22b:free"), OPENROUTER)
             tool_models_to_try = [tool_models_to_try[0], glm_entry] + [
                 m for m in tool_models_to_try[1:] if m != glm_entry
             ]
@@ -836,7 +836,7 @@ class FreeAgent:
         tool_models_to_try.append((get_healthy_model("nvidia_nemotron", "nvidia/nemotron-3-nano-30b-a3b"), NVIDIA))
         tool_models_to_try.append((get_healthy_model("sambanova", "Meta-Llama-3.3-70B-Instruct"), SAMBANOVA))
         if self.openrouter_glm_client:
-            tool_models_to_try.append((get_healthy_model("openrouter", "z-ai/glm-5.1"), OPENROUTER))
+            tool_models_to_try.append((get_healthy_model("openrouter", "qwen/qwen3-235b-a22b:free"), OPENROUTER))
         if self.together_client:
             tool_models_to_try.append(("zai-org/GLM-5.1", TOGETHER))
         # ── CODING TASK: promote GLM-5.1 to first fallback position ──
@@ -845,7 +845,7 @@ class FreeAgent:
         if is_coding_task:
             tool_models_to_try = [m for m in tool_models_to_try if m[0] != "llama-3.1-8b-instant"]
         if is_coding_task and self.openrouter_glm_client:
-            glm_entry = (get_healthy_model("openrouter", "z-ai/glm-5.1"), OPENROUTER)
+            glm_entry = (get_healthy_model("openrouter", "qwen/qwen3-235b-a22b:free"), OPENROUTER)
             tool_models_to_try = [tool_models_to_try[0], glm_entry] + [
                 m for m in tool_models_to_try[1:] if m != glm_entry
             ]
@@ -1787,7 +1787,7 @@ class FreeAgent:
                 "qwen-3-235b-a22b-instruct-2507":  "⚡ Qwen3",
                 "Meta-Llama-3.3-70B-Instruct":    "🔥 70B",
                 "nvidia/nemotron-3-nano-30b-a3b":  "⚡ Nemotron",
-                "z-ai/glm-5.1":                   "🧠 GLM-5.1 · openrouter",
+                "qwen/qwen3-235b-a22b:free":                   "🧠 GLM-5.1 · openrouter",
                 "zai-org/GLM-5.1":          "🧠 GLM-5.1 · together",
                 "@cf/nvidia/nemotron-3-120b-a12b": "🧠 Nemotron-120B · cloudflare",
             }.get(model, "⚡ 8B")
@@ -1843,7 +1843,7 @@ class FreeAgent:
                 "DeepSeek-V3.1":                    "🧠 DeepSeek-V3.1",
                 "nvidia/nemotron-3-nano-30b-a3b":   "⚡ Nemotron",
                 "zai-org/GLM-5.1-FP8":              "🧠 GLM-5.1 · modal",
-                "z-ai/glm-5.1":                     "🧠 GLM-5.1 · openrouter",
+                "qwen/qwen3-235b-a22b:free":                     "🧠 GLM-5.1 · openrouter",
                 "zai-org/GLM-5.1":             "🧠 GLM-5.1 · together",
                 "minimaxai/minimax-m2.7":            "🔥 MiniMax",
             }.get(model, "⚡ 8B")
@@ -1859,7 +1859,7 @@ class FreeAgent:
             if self.cloudflare_token:
                 providers_to_try.append(("@cf/nvidia/nemotron-3-120b-a12b", CLOUDFLARE))
             if self.openrouter_glm_client:
-                providers_to_try.append(("z-ai/glm-5.1", OPENROUTER))
+                providers_to_try.append(("qwen/qwen3-235b-a22b:free", OPENROUTER))
             if self.together_client:
                 providers_to_try.append(("zai-org/GLM-5.1", TOGETHER))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))
@@ -1916,7 +1916,7 @@ class FreeAgent:
             if self.modal_client:
                 providers_to_try.append(("zai-org/GLM-5.1-FP8", MODAL))
             if self.openrouter_glm_client:
-                providers_to_try.append(("z-ai/glm-5.1", OPENROUTER))
+                providers_to_try.append(("qwen/qwen3-235b-a22b:free", OPENROUTER))
             if self.together_client:
                 providers_to_try.append(("zai-org/GLM-5.1", TOGETHER))
             providers_to_try.append(("llama-3.1-8b-instant", GROQ))

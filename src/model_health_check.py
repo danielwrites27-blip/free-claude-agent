@@ -169,7 +169,7 @@ PROVIDERS = {
         "label": "OpenRouter",
         "api_url": "https://openrouter.ai/api/v1/chat/completions",
         "key_env": "OPENROUTER_API_KEY",
-        "default_model": "z-ai/glm-5.1",
+        "default_model": "qwen/qwen3-235b-a22b:free",
         "tavily_query": "OpenRouter best coding models 2026 SWE-bench benchmark parameters",
     },
     "groq": {
